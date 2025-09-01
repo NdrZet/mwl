@@ -3,68 +3,50 @@ Z Музыка - это современный офлайн музыкальны
 
 ## Возможности:
 
-✅ Воспроизведение аудиофайлов (MP3, WAV, OGG, M4A, FLAC, AAC)
-✅ Автоматическое извлечение метаданных (название, исполнитель, альбом)
-✅ Создание и управление плейлистами
-✅ Поиск по трекам
-✅ Drag & Drop загрузка файлов
-✅ Современный адаптивный интерфейс
+-  Воспроизведение аудиофайлов (MP3, WAV, OGG, M4A, FLAC, AAC)
+-  Автоматическое извлечение метаданных (название, исполнитель, альбом)
+-  Создание и управление плейлистами
+-  Сохранение треков
+-  Поиск по трекам
+-  Drag & Drop загрузка файлов
+-  Современный адаптивный интерфейс
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🔧 Технологический стек
 
+- **Frontend:** React 18 + TypeScript
+- **UI Framework:** Tailwind CSS + shadcn/ui компоненты
+- **Desktop:** Electron 30
+- **Build Tool:** Vite 5
+- **Audio Processing:** music-metadata (для извлечения метаданных)
+- **State Management:** React Context API
+
+## 📂️Структура проекта
 ```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+mwl_v.1/
+├── src/
+│   ├── components/           # React компоненты
+│   │   ├── ui/              # UI компоненты (shadcn/ui)
+│   │   ├── MusicContext.tsx # Главный контекст приложения
+│   │   ├── MusicPlayer.tsx  # Компонент плеера
+│   │   ├── FileUpload.tsx   # Загрузка файлов
+│   │   ├── TrackList.tsx    # Список треков
+│   │   └── PlaylistManager.tsx # Управление плейлистами
+│   ├── styles/
+│   │   └── globals.css      # Глобальные стили
+│   └── App.tsx              # Главный компонент
+├── electron.cjs             # Electron main process
+├── preload.js               # Electron preload script
+├── package.json             # Зависимости и скрипты
+└── dist/                    # Собранное приложение
 ```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+#### Краткосрочные цели
+- [ ] Добавление поддержки веб-радио
+- [ ] Авто-импорт обложек и сортировка по альбомам
+- [x] Улучшение поиска и фильтрации
+- [ ] Добавление визуализации аудио
+- [x] Поддержка горячих клавиш
+#### Долгосрочные цели
+- [ ] Синхронизация с облачными сервисами
+- [ ] Поддержка подкастов
+- [ ] Мобильная версия
+- [ ] Плагинная система

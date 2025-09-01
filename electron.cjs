@@ -25,11 +25,11 @@ function createWindow() {
             // Ключевые настройки для работы всего
             nodeIntegration: false, // Безопасность
             contextIsolation: true, // Безопасность и работа preload
-            webSecurity: false, // Разрешаем загрузку локальных файлов (наша главная проблема)
+            webSecurity: false, // Разрешение на загрузку локальных файлов
         },
     });
 
-    // Используем надежный способ формирования URL
+    // Использование надежного способа формирования URL
     const startUrl = url.format({
         pathname: path.join(__dirname, 'dist', 'index.html'),
         protocol: 'file:',
@@ -42,7 +42,7 @@ function createWindow() {
     // mainWindow.webContents.openDevTools();
 }
 
-// --- НАША "СЕРВЕРНАЯ" ЛОГИКА ---
+// "СЕРВЕРНАЯ" ЛОГИКА
 // Она слушает команды, которые приходят из React через preload.js
 
 // Команда "Загрузи треки"
