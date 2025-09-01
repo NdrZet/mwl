@@ -3,7 +3,7 @@
   "productName": "Z Музыка",
   "version": "1.0.1",
   "description": "Offline Music Player",
-  "author": "Karin",
+  "author": "Karim",
   "private": true,
   "type": "module",
   "main": "electron.cjs",
