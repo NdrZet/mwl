@@ -1,0 +1,114 @@
+/* 1. Сначала мы даем Tailwind команды для генерации */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 2. Затем мы определяем все наши переменные и базовые стили внутри слоя @layer */
+@layer base {
+    /* Ваши переменные для светлой темы */
+    :root {
+        --font-size: 14px;
+        --background: #f8f9fa;
+        --foreground: #212529;
+        --card: #ffffff;
+        --card-foreground: #212529;
+        --popover: #ffffff;
+        --popover-foreground: #212529;
+        --primary: #1db954;
+        --primary-foreground: #ffffff;
+        --secondary: #f1f3f4;
+        --secondary-foreground: #212529;
+        --muted: #f1f3f4;
+        --muted-foreground: #6c757d;
+        --accent: #e9ecef;
+        --accent-foreground: #212529;
+        --destructive: #dc3545;
+        --destructive-foreground: #ffffff;
+        --border: #dee2e6;
+        --input: transparent;
+        --input-background: #ffffff;
+        --switch-background: #dee2e6;
+        --ring: #1db954;
+        --chart-1: #1db954;
+        --chart-2: #1ed760;
+        --chart-3: #1aa34a;
+        --chart-4: #168e3f;
+        --chart-5: #137a35;
+        --radius: 8px;
+        --sidebar: #000000;
+        --sidebar-foreground: #ffffff;
+        --sidebar-primary: #1db954;
+        --sidebar-primary-foreground: #ffffff;
+        --sidebar-accent: #181818;
+        --sidebar-accent-foreground: #b3b3b3;
+        --sidebar-border: #282828;
+        --sidebar-ring: #1db954;
+    }
+
+    /* Ваши переменные для темной темы */
+    .dark {
+        --background: #121212;
+        --foreground: #ffffff;
+        --card: #181818;
+        --card-foreground: #ffffff;
+        --popover: #282828;
+        --popover-foreground: #ffffff;
+        --primary: #1db954;
+        --primary-foreground: #ffffff;
+        --secondary: #282828;
+        --secondary-foreground: #ffffff;
+        --muted: #282828;
+        --muted-foreground: #b3b3b3;
+        --accent: #282828;
+        --accent-foreground: #ffffff;
+        --destructive: #e22134;
+        --destructive-foreground: #ffffff;
+        --border: #282828;
+        --input: #282828;
+        --ring: #1db954;
+        --chart-1: #1db954;
+        --chart-2: #1ed760;
+        --chart-3: #1aa34a;
+        --chart-4: #168e3f;
+        --chart-5: #137a35;
+        --sidebar: #000000;
+        --sidebar-foreground: #ffffff;
+        --sidebar-primary: #1db954;
+        --sidebar-primary-foreground: #ffffff;
+        --sidebar-accent: #181818;
+        --sidebar-accent-foreground: #b3b3b3;
+        --sidebar-border: #282828;
+        --sidebar-ring: #1db954;
+    }
+
+    /* Ваши базовые стили для body */
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* 3. Ваши кастомные стили, не относящиеся к Tailwind, можно оставить здесь */
+/* Custom scrollbar styling for music app aesthetic */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--muted);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+}
+
+/* Smooth transitions */
+* {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
