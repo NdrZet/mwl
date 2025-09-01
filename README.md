@@ -1,12 +1,14 @@
-# Z Музыка (Music was live)
-
 # Welcome
 Z Музыка - это современный офлайн музыкальный плеер, построенный на основе React, TypeScript и Electron. Приложение предоставляет полнофункциональный интерфейс для управления музыкальной библиотекой с поддержкой плейлистов, метаданных и красивого UI.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Возможности:
 
-## Expanding the ESLint configuration
+✅ Воспроизведение аудиофайлов (MP3, WAV, OGG, M4A, FLAC, AAC)
+✅ Автоматическое извлечение метаданных (название, исполнитель, альбом)
+✅ Создание и управление плейлистами
+✅ Поиск по трекам
+✅ Drag & Drop загрузка файлов
+✅ Современный адаптивный интерфейс
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
