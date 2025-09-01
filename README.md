@@ -1,7 +1,7 @@
 # Z Музыка (Music was live)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-Currently, two official plugins are available:
+# Welcome
+Z Музыка - это современный офлайн музыкальный плеер, построенный на основе React, TypeScript и Electron. Приложение предоставляет полнофункциональный интерфейс для управления музыкальной библиотекой с поддержкой плейлистов, метаданных и красивого UI.
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
