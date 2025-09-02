@@ -25,6 +25,7 @@ declare global {
       loadTracks: () => Promise<Track[]>;
       saveTracks: (tracks: Track[]) => void;
       getMetadata: (filePath: string) => Promise<{ title: string, artist: string, album: string, duration: number, cover: string | null }>;
+      getCoverPath: (filePath: string) => Promise<string | null>;
     }
   }
 }
@@ -110,24 +111,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
 
         // Миграция обложек: если cover пустой или это старый file://, переизвлекаем cover из метаданных
-        const migrated = await Promise.all(
+        const withCovers = await Promise.all(
           normalized.map(async (t) => {
-            try {
-              const hasCover = typeof t.cover === 'string' && t.cover.length > 0;
-              const isOldFileCover = hasCover && t.cover!.toLowerCase().startsWith('file://');
-              const shouldRefresh = !hasCover || isOldFileCover;
-              if (shouldRefresh && t.path) {
-                const meta = await window.electronAPI!.getMetadata(t.path);
-                if (meta?.cover) {
-                  return { ...t, cover: meta.cover } as Track;
-                }
-              }
-            } catch {}
+            if (!t.cover && t.path) {
+              try {
+                const p = await window.electronAPI!.getCoverPath(t.path);
+                if (p) return { ...t, cover: p } as Track;
+              } catch {}
+            }
             return t;
           })
         );
 
-        setTracks(migrated);
+        setTracks(withCovers);
       };
       loadInitialTracks();
     } else {
@@ -169,7 +165,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const now = Date.now();
       const candidates: Track[] = [];
       for (const t of snapshot) {
-        const needs = (!t.cover || (typeof t.cover === 'string' && t.cover.toLowerCase().startsWith('file://')));
+        const needs = !t.cover; // не трогаем уже установленный cover (file:// или data:)
         const allowed = isRealFsPath(t.path);
         const last = lastCoverAttemptRef.current[t.id] ?? 0;
         if (needs && allowed && (now - last > 60000)) {
@@ -184,8 +180,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await Promise.all(candidates.map(async (t) => {
         try {
           lastCoverAttemptRef.current[t.id] = now;
-          const meta = await window.electronAPI!.getMetadata(t.path);
-          if (meta?.cover) updates[t.id] = meta.cover;
+          const p = await window.electronAPI!.getCoverPath(t.path);
+          if (p) updates[t.id] = p;
         } catch {}
       }));
 
@@ -285,13 +281,15 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (tracks.some(t => t.path === filePath)) return;
 
       const metadata = await window.electronAPI!.getMetadata(filePath);
+      // Путь к миниатюре-кешу (file://) — создадим при необходимости
+      const coverPath = await window.electronAPI!.getCoverPath(filePath);
       const newTrack: Track = {
         id: generateTrackId(),
         name: metadata.title,
         artist: metadata.artist,
         album: metadata.album,
         duration: metadata.duration,
-        cover: metadata.cover,
+        cover: coverPath || metadata.cover,
         path: filePath,
       };
       setTracks(prev => [...prev, newTrack]);

@@ -1,8 +1,9 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, nativeImage } = require('electron');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
 const musicMetadata = require('music-metadata');
+const crypto = require('crypto');
 
 // Путь к файлу, где будут храниться треки. Он создастся в папке с данными приложения (например, AppData).
 const userDataPath = app.getPath('userData');
@@ -25,11 +26,11 @@ function createWindow() {
             // Ключевые настройки для работы всего
             nodeIntegration: false, // Безопасность
             contextIsolation: true, // Безопасность и работа preload
-            webSecurity: false, // Разрешение на загрузку локальных файлов
+            webSecurity: false, // Разрешаем загрузку локальных файлов (наша главная проблема)
         },
     });
 
-    // Использование надежного способа формирования URL
+    // Используем надежный способ формирования URL
     const startUrl = url.format({
         pathname: path.join(__dirname, 'dist', 'index.html'),
         protocol: 'file:',
@@ -42,7 +43,7 @@ function createWindow() {
     // mainWindow.webContents.openDevTools();
 }
 
-// "СЕРВЕРНАЯ" ЛОГИКА
+// --- НАША "СЕРВЕРНАЯ" ЛОГИКА ---
 // Она слушает команды, которые приходят из React через preload.js
 
 // Команда "Загрузи треки"
@@ -124,6 +125,87 @@ ipcMain.handle('get-metadata', async (event, filePath) => {
             duration: 0,
             cover: null
         };
+    }
+});
+
+// --- КЕШ МИНИАТЮР ОБЛОЖЕК ---
+const coversDir = path.join(userDataPath, 'covers');
+function ensureCoversDir() {
+    try { if (!fs.existsSync(coversDir)) fs.mkdirSync(coversDir, { recursive: true }); } catch {}
+}
+
+async function tryEmbeddedCover(filePath) {
+    try {
+        const metadata = await musicMetadata.parseFile(filePath);
+        const pic = metadata?.common?.picture?.[0];
+        if (pic && pic.data) return Buffer.from(pic.data);
+    } catch {}
+    return null;
+}
+
+function tryFolderCoverSync(audioPath) {
+    try {
+        const dir = path.dirname(audioPath);
+        const candidates = ['cover.jpg','cover.png','folder.jpg','folder.png','front.jpg','front.png'];
+        for (const name of candidates) {
+            const full = path.join(dir, name);
+            if (fs.existsSync(full)) return fs.readFileSync(full);
+        }
+    } catch {}
+    return null;
+}
+
+function resizeToPng(buffer, size = 256) {
+    try {
+        const img = nativeImage.createFromBuffer(buffer);
+        if (img.isEmpty()) return null;
+        const resized = img.resize({ width: size, height: size, quality: 'best' });
+        const out = resized.toPNG();
+        return out && out.length ? out : null;
+    } catch {}
+    return null;
+}
+
+function sniffExt(buffer) {
+    try {
+        const head = buffer.slice(0, 4).toString('hex').toUpperCase();
+        if (head.startsWith('89504E47')) return '.png';
+        if (head.startsWith('FFD8')) return '.jpg';
+        if (head.startsWith('47494638')) return '.gif';
+    } catch {}
+    return '.jpg';
+}
+
+function writeCover(buffer, ext) {
+    try {
+        ensureCoversDir();
+        const hash = crypto.createHash('md5').update(buffer).digest('hex');
+        const file = path.join(coversDir, `${hash}${ext}`);
+        if (!fs.existsSync(file)) fs.writeFileSync(file, buffer);
+        return `file:///${file.replace(/\\/g,'/')}`;
+    } catch {}
+    return null;
+}
+
+async function ensureCoverPath(filePath) {
+    let buf = await tryEmbeddedCover(filePath);
+    if (!buf) buf = tryFolderCoverSync(filePath);
+    if (!buf) return null;
+    // Сначала пробуем сконвертировать в PNG-миниатюру 256x256
+    const png = resizeToPng(buf, 256);
+    if (png) return writeCover(png, '.png');
+    // Если конверсия не удалась, сохраняем исходник с корректным расширением
+    const ext = sniffExt(buf);
+    return writeCover(buf, ext);
+}
+
+// Вернём file:// путь к миниатюре обложки (создаст при необходимости)
+ipcMain.handle('get-cover-path', async (event, filePath) => {
+    try {
+        if (!filePath || typeof filePath !== 'string') return null;
+        return await ensureCoverPath(filePath);
+    } catch {
+        return null;
     }
 });
 
