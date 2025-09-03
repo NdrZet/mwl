@@ -9,6 +9,7 @@ export interface Track {
   duration: number;
   path: string; // В Electron - абсолютный путь к файлу, в браузере - Object URL
   cover: string | null; // Обложка в формате base64
+  lastPlayedAt?: number;
 }
 
 export interface Playlist {
@@ -350,6 +351,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       await audio.play();
       setIsPlaying(true);
+      // помечаем альбом как недавно проигранный
+      setTracks(prev => prev.map(t => t.id === trackToPlay.id ? { ...t, lastPlayedAt: Date.now() } : t));
     } catch (e) {
       console.error("Play failed", e);
       setIsPlaying(false);

@@ -18,8 +18,9 @@ import {
 import { Button } from './components/ui/button';
 import { ScrollArea } from './components/ui/scroll-area';
 import { Separator } from './components/ui/separator';
+import { AlbumsGrid } from './components/AlbumsGrid';
 
-type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked';
+type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums';
 
 // Мы вынесли всю основную часть в отдельный компонент для чистоты верстки
 const MainLayout = () => {
@@ -73,6 +74,13 @@ const MainLayout = () => {
                         </div>
 
                         <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-2xl font-bold">Albums</h2>
+                                <Button size="sm" variant="ghost" onClick={() => setCurrentView('albums')}>All</Button>
+                            </div>
+                            <AlbumsGrid mode="recent" limit={4} />
+                        </div>
+                        <div>
                             <h2 className="text-2xl font-bold mb-4">Recently Played</h2>
                             <TrackList showSearch={false} />
                         </div>
@@ -104,6 +112,13 @@ const MainLayout = () => {
                 );
             case 'playlists':
                 return <PlaylistManager />;
+            case 'albums':
+                return (
+                    <div className="space-y-6">
+                        <h1 className="text-3xl font-bold">Albums</h1>
+                        <AlbumsGrid mode="all" />
+                    </div>
+                );
             case 'upload':
                 return (
                     <div className="space-y-6">
@@ -138,11 +153,11 @@ const MainLayout = () => {
             <div className="w-64 bg-sidebar flex-shrink-0 flex flex-col border-r border-sidebar-border">
                 <div className="p-6">
                     <div className="flex items-center space-x-2">
-                        <Music className="h-8 w-8 text-primary" />
-                        <span className="text-xl font-bold text-sidebar-foreground">Music</span>
+                        <span className="text-3xl font-extrabold text-primary leading-none select-none"> </span>
+                        <span className="text-xl font-bold text-sidebar-foreground">Z Music</span>
                     </div>
                 </div>
-                <div className="px-3 mb-6">
+                <div className="px-3 mb-0">
                     <nav className="space-y-1">
                         {sidebarItems.map((item) => (
                             <Button
@@ -159,8 +174,7 @@ const MainLayout = () => {
                         ))}
                     </nav>
                 </div>
-                <Separator className="mx-6 bg-sidebar-border" />
-                <div className="flex-1 px-3 py-6">
+                <div className="flex-1 px-3 pt-0 pb-6">
                     <div className="space-y-1">
                         <Button
                             variant="ghost"
@@ -181,6 +195,16 @@ const MainLayout = () => {
                         >
                             <Heart className="mr-3 h-5 w-5" />
                             Liked Songs
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent ${
+                                currentView === 'albums' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
+                            }`}
+                            onClick={() => setCurrentView('albums')}
+                        >
+                            <Library className="mr-3 h-5 w-5" />
+                            Albums
                         </Button>
                         <Button
                             variant="ghost"
