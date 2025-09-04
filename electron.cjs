@@ -155,7 +155,7 @@ function tryFolderCoverSync(audioPath) {
     return null;
 }
 
-function resizeToPng(buffer, size = 256) {
+function resizeToPng(buffer, size = 1024) {
     try {
         const img = nativeImage.createFromBuffer(buffer);
         if (img.isEmpty()) return null;
@@ -192,7 +192,7 @@ async function ensureCoverPath(filePath) {
     if (!buf) buf = tryFolderCoverSync(filePath);
     if (!buf) return null;
     // Сначала пробуем сконвертировать в PNG-миниатюру 256x256
-    const png = resizeToPng(buf, 256);
+    const png = resizeToPng(buf, 1024);
     if (png) return writeCover(png, '.png');
     // Если конверсия не удалась, сохраняем исходник с корректным расширением
     const ext = sniffExt(buf);

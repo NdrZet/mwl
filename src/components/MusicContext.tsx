@@ -194,6 +194,32 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(interval);
   }, []);
 
+  // Одноразовое обновление кеша обложек до более высокого разрешения
+  useEffect(() => {
+    const isElectron = !!window.electronAPI;
+    if (!isElectron) return;
+    if (tracks.length === 0) return;
+    const cacheSize = localStorage.getItem('cover_cache_size');
+    if (cacheSize === '1024') return;
+
+    (async () => {
+      try {
+        const updates: Record<string, string> = {};
+        await Promise.all(tracks.map(async (t) => {
+          if (!t.path) return;
+          try {
+            const p = await window.electronAPI!.getCoverPath(t.path);
+            if (p && p !== t.cover) updates[t.id] = p;
+          } catch {}
+        }));
+        if (Object.keys(updates).length > 0) {
+          setTracks(prev => prev.map(t => updates[t.id] ? { ...t, cover: updates[t.id] } : t));
+        }
+        localStorage.setItem('cover_cache_size', '1024');
+      } catch {}
+    })();
+  }, [tracks.length]);
+
   useEffect(() => {
     const isElectron = !!window.electronAPI;
     if (tracks.length > 0 || localStorage.getItem('musicApp_tracks_saved_once')) {
