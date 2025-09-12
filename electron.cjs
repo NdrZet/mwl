@@ -37,7 +37,6 @@ function createWindow() {
         slashes: true
     });
 
-
     mainWindow.loadURL(startUrl);
 
     // DevTools можно открыть вручную (F12), авто-открытие отключено
