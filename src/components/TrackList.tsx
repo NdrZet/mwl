@@ -1,17 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Play, Pause, MoreHorizontal, Trash2, Plus, Music, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-} from './ui/dropdown-menu';
+// Убираем Radix-меню и делаем собственное всплывающее меню
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +13,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from './ui/alert-dialog';
 import { useMusicContext, type Track } from './MusicContext';
 import { ScrollArea } from './ui/scroll-area';
@@ -58,6 +49,39 @@ export const TrackList: React.FC<TrackListProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [trackToDelete, setTrackToDelete] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuFor(null); };
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest?.('[data-tracklist-menu]')) return;
+      setMenuFor(null);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('click', onClick);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('click', onClick); };
+  }, []);
+
+  useEffect(() => {
+    const root = document.getElementById('root');
+    const dark = root?.querySelector('.dark') as HTMLElement | null;
+    setPortalEl(dark || root || document.body);
+  }, []);
+
+  const computeMenuPosition = (rect: DOMRect) => {
+    const GAP = 8;
+    const MENU_W = 224; // w-56
+    const MENU_H = 260; // приблизительная высота
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = rect.left + rect.width + GAP;
+    let y = rect.top + rect.height + GAP;
+    if (x + MENU_W > vw - 8) x = Math.max(8, rect.left - GAP - MENU_W);
+    if (y + MENU_H > vh - 8) y = Math.max(8, vh - 8 - MENU_H);
+    return { x, y };
+  };
 
   const tracks = propTracks || allTracks;
 
@@ -214,76 +238,21 @@ export const TrackList: React.FC<TrackListProps> = ({
                       </div>
 
                       {/* More Options */}
-                      <div className="col-span-1 flex items-center justify-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add to Playlist
-                              </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent>
-                                {playlists.length === 0 ? (
-                                    <DropdownMenuItem disabled>
-                                      No playlists available
-                                    </DropdownMenuItem>
-                                ) : (
-                                    playlists.map((playlist) => (
-                                        <DropdownMenuItem
-                                            key={playlist.id}
-                                            onClick={() => addToPlaylist(playlist.id, track.id)}
-                                        >
-                                          {playlist.name}
-                                        </DropdownMenuItem>
-                                    ))
-                                )}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
-                            <DropdownMenuSeparator />
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                    className="text-destructive"
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      setTrackToDelete(track.id);
-                                    }}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Track</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete "{track.name}"? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel onClick={() => setTrackToDelete(null)}>
-                                    Cancel
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                      onClick={handleDeleteTrack}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <div className="col-span-1 flex items-center justify-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          aria-label="More actions"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const pos = computeMenuPosition(rect);
+                            setMenuFor({ id: track.id, x: pos.x, y: pos.y });
+                          }}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                 ))}
@@ -299,6 +268,60 @@ export const TrackList: React.FC<TrackListProps> = ({
               </p>
             </div>
         )}
+      <AlertDialog open={!!trackToDelete} onOpenChange={(open) => { if (!open) setTrackToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Track</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this track? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTrackToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTrack}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {menuFor && portalEl && createPortal(
+        <div data-tracklist-menu className="fixed z-[10000]" style={{ left: Math.round(menuFor.x), top: Math.round(menuFor.y) }} onClick={(e) => e.stopPropagation()}>
+          <div className="bg-popover text-popover-foreground w-56 rounded-md p-1 shadow-lg">
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Add to Playlist</div>
+            <div className="py-1 max-h-64 overflow-y-auto">
+              {playlists.length === 0 ? (
+                <div className="px-2 py-1 text-sm text-muted-foreground">No playlists available</div>
+              ) : (
+                playlists.map((playlist) => (
+                  <button
+                    key={playlist.id}
+                    className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => { addToPlaylist(playlist.id, menuFor.id); setMenuFor(null); }}
+                  >
+                    <Plus className="inline-block mr-2 h-4 w-4 align-text-bottom" />
+                    {playlist.name}
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="my-1 h-px bg-border" />
+            <button
+              className="w-full text-left px-2 py-1.5 rounded-sm text-sm text-destructive hover:bg-destructive/10"
+              onClick={() => { setTrackToDelete(menuFor.id); setMenuFor(null); }}
+            >
+              <Trash2 className="inline-block mr-2 h-4 w-4 align-text-bottom" />
+              Delete
+            </button>
+          </div>
+        </div>,
+        portalEl
+      )}
       </div>
   );
 };
