@@ -445,6 +445,17 @@ ipcMain.handle('podcasts:refreshAll', async () => {
     }
 });
 
+ipcMain.handle('podcasts:remove', async (event, podcastId) => {
+    try {
+        const podcasts = loadPodcastsSafe();
+        const next = podcasts.filter(p => p.id !== podcastId);
+        savePodcastsSafe(next);
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: String(e && e.message || e) };
+    }
+});
+
 // --- СТАНДАРТНЫЕ СОБЫТИЯ ЖИЗНЕННОГО ЦИКЛА ELECTRON ---
 app.whenReady().then(() => {
     createWindow();

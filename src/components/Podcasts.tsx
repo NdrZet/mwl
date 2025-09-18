@@ -34,6 +34,7 @@ export const Podcasts: React.FC<{ openPodcast?: (id: string) => void }> = ({ ope
   const [loading, setLoading] = React.useState(false);
   const [podcasts, setPodcasts] = React.useState<Podcast[]>([]);
   const { play } = useMusicContext();
+  const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
   const loadAll = React.useCallback(async () => {
     try {
@@ -101,14 +102,38 @@ export const Podcasts: React.FC<{ openPodcast?: (id: string) => void }> = ({ ope
                 </button>
               </CardHeader>
               <CardContent>
-                <div className="text-sm text-muted-foreground line-clamp-3">
-                  {p.description}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-sm text-muted-foreground line-clamp-3">
+                    {p.description}
+                  </div>
+                  <Button variant="destructive" size="sm" onClick={() => setConfirmId(p.id)}>Delete</Button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       </ScrollArea>
+
+      {/* Confirm dialog */}
+      <div>
+        {confirmId && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center" onClick={() => setConfirmId(null)}>
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative bg-card text-foreground border border-border rounded-lg p-6 w-[92vw] max-w-sm" onClick={(e) => e.stopPropagation()}>
+              <div className="text-lg font-semibold mb-2">Удалить подкаст?</div>
+              <div className="text-sm text-muted-foreground mb-4">Действие нельзя отменить.</div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setConfirmId(null)}>Отмена</Button>
+                <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+                  const res = await (window as any).electronAPI?.podcastsRemove?.(confirmId);
+                  setConfirmId(null);
+                  if (res?.ok) await loadAll();
+                }}>Удалить</Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

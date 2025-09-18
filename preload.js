@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     podcastsGetAll: () => ipcRenderer.invoke('podcasts:getAll'),
     podcastsAddByUrl: (feedUrl) => ipcRenderer.invoke('podcasts:addByUrl', feedUrl),
     podcastsRefreshAll: () => ipcRenderer.invoke('podcasts:refreshAll'),
+    podcastsRemove: (podcastId) => ipcRenderer.invoke('podcasts:remove', podcastId),
     // Window controls for custom titlebar
     isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
     minimizeWindow: () => ipcRenderer.send('window:minimize'),

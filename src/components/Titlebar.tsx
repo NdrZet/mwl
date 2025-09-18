@@ -21,12 +21,28 @@ export const Titlebar: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-9 w-full flex items-center justify-between px-2 select-none bg-sidebar" style={{ WebkitAppRegion: 'drag' as any }}>
+    <div className="h-9 w-full flex items-center justify-between px-3 select-none bg-sidebar" style={{ WebkitAppRegion: 'drag' as any }}>
       <div className="flex-1" />
-      <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' as any }}>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => (window as any).electronAPI?.minimizeWindow?.()} aria-label="Minimize">—</Button>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()} aria-label="Maximize">{maximized ? '▭' : '□'}</Button>
-        <Button variant="destructive" size="sm" className="h-7 w-7 p-0" onClick={() => (window as any).electronAPI?.closeWindow?.()} aria-label="Close">×</Button>
+      {/* Right-side traffic lights */}
+      <div className="flex items-center space-x-2" style={{ WebkitAppRegion: 'no-drag' as any }}>
+        <button
+          aria-label="Minimize window"
+          onClick={() => (window as any).electronAPI?.minimizeWindow?.()}
+          className="size-3.5 rounded-full bg-[#28c840] hover:ring-2 hover:ring-[#28c840]/40 transition-shadow"
+          title="Minimize"
+        />
+        <button
+          aria-label="Toggle maximize"
+          onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()}
+          className="size-3.5 rounded-full bg-[#ffbd2e] hover:ring-2 hover:ring-[#ffbd2e]/40 transition-shadow"
+          title={maximized ? 'Restore' : 'Maximize'}
+        />
+        <button
+          aria-label="Close window"
+          onClick={() => (window as any).electronAPI?.closeWindow?.()}
+          className="size-3.5 rounded-full bg-[#ff5f57] hover:ring-2 hover:ring-[#ff5f57]/40 transition-shadow"
+          title="Close"
+        />
       </div>
     </div>
   );
