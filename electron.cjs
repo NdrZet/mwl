@@ -102,6 +102,8 @@ function createWindow() {
         title: "Z Музыка", // Твое кастомное название
         // Путь к иконке. Он будет работать в готовом приложении.
         icon: path.join(__dirname, 'dist', 'icon.ico'),
+        frame: false, // кастомный заголовок
+        titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
         webPreferences: {
             // Указываем наш "мост" для связи с React
             preload: path.join(__dirname, 'preload.js'),
@@ -121,6 +123,14 @@ function createWindow() {
     });
 
     mainWindow.loadURL(startUrl);
+
+    // Прокидываем события изменения состояния окна в рендерер
+    mainWindow.on('maximize', () => {
+        try { mainWindow.webContents.send('window:maximized'); } catch {}
+    });
+    mainWindow.on('unmaximize', () => {
+        try { mainWindow.webContents.send('window:unmaximized'); } catch {}
+    });
 
     // DevTools можно открыть вручную (F12), авто-открытие отключено
     // mainWindow.webContents.openDevTools();
@@ -290,6 +300,27 @@ ipcMain.handle('get-cover-path', async (event, filePath) => {
     } catch {
         return null;
     }
+});
+
+// --- Управление окном (для кастомного заголовка) ---
+ipcMain.handle('window:isMaximized', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    try { return !!win?.isMaximized(); } catch { return false; }
+});
+ipcMain.on('window:minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    try { win?.minimize(); } catch {}
+});
+ipcMain.on('window:toggleMaximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    try {
+        if (!win) return;
+        if (win.isMaximized()) win.unmaximize(); else win.maximize();
+    } catch {}
+});
+ipcMain.on('window:close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    try { win?.close(); } catch {}
 });
 
 // --- PODCASTS IPC ---

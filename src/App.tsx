@@ -20,12 +20,15 @@ import { ScrollArea } from './components/ui/scroll-area';
 import { Separator } from './components/ui/separator';
 import { AlbumsGrid } from './components/AlbumsGrid';
 import { Podcasts } from './components/Podcasts';
+import { Titlebar } from './components/Titlebar';
+import { PodcastDetail } from './components/PodcastDetail';
 
-type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'podcasts';
+type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'podcasts' | 'podcastDetail';
 
 // Мы вынесли всю основную часть в отдельный компонент для чистоты верстки
 const MainLayout = () => {
     const [currentView, setCurrentView] = useState<View>('home');
+    const [openedPodcastId, setOpenedPodcastId] = useState<string | null>(null);
 
     const sidebarItems = [
         { id: 'home' as View, label: 'Home', icon: Home },
@@ -124,7 +127,13 @@ const MainLayout = () => {
                 return (
                     <div className="space-y-6">
                         <h1 className="text-3xl font-bold">Podcasts</h1>
-                        <Podcasts />
+                        <Podcasts openPodcast={(id) => { setOpenedPodcastId(id); setCurrentView('podcastDetail'); }} />
+                    </div>
+                );
+            case 'podcastDetail':
+                return (
+                    <div className="space-y-6">
+                        <PodcastDetail podcastId={openedPodcastId} onBack={() => setCurrentView('podcasts')} />
                     </div>
                 );
             case 'upload':
@@ -254,6 +263,7 @@ export default function App() {
     return (
         <MusicProvider>
             <div className="h-screen flex flex-col bg-background text-foreground dark">
+                <Titlebar />
                 {/* Этот div занимает все доступное место, КРОМЕ нижнего плеера */}
                 <div className="flex-1 flex overflow-hidden">
                     <MainLayout />

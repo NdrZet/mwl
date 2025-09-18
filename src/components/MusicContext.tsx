@@ -27,6 +27,9 @@ declare global {
       saveTracks: (tracks: Track[]) => void;
       getMetadata: (filePath: string) => Promise<{ title: string, artist: string, album: string, duration: number, cover: string | null }>;
       getCoverPath: (filePath: string) => Promise<string | null>;
+      podcastsGetAll?: () => Promise<any[]>;
+      podcastsAddByUrl?: (feedUrl: string) => Promise<{ ok: boolean; error?: string }>;
+      podcastsRefreshAll?: () => Promise<{ ok: boolean; error?: string }>;
     }
   }
 }
