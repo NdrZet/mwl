@@ -21,8 +21,8 @@ export const Titlebar: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-9 w-full flex items-center justify-between px-2 select-none bg-sidebar border-b border-sidebar-border" style={{ WebkitAppRegion: 'drag' as any }}>
-      <div className="text-xs text-sidebar-foreground/90">Z Музыка</div>
+    <div className="h-9 w-full flex items-center justify-between px-2 select-none bg-sidebar" style={{ WebkitAppRegion: 'drag' as any }}>
+      <div className="flex-1" />
       <div className="flex items-center space-x-1" style={{ WebkitAppRegion: 'no-drag' as any }}>
         <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => (window as any).electronAPI?.minimizeWindow?.()} aria-label="Minimize">—</Button>
         <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()} aria-label="Maximize">{maximized ? '▭' : '□'}</Button>
