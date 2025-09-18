@@ -6,4 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getMetadata: (filePath) => ipcRenderer.invoke('get-metadata', filePath),
     selectFiles: () => ipcRenderer.invoke('select-files'),
     getCoverPath: (filePath) => ipcRenderer.invoke('get-cover-path', filePath),
+    // Podcasts
+    podcastsGetAll: () => ipcRenderer.invoke('podcasts:getAll'),
+    podcastsAddByUrl: (feedUrl) => ipcRenderer.invoke('podcasts:addByUrl', feedUrl),
+    podcastsRefreshAll: () => ipcRenderer.invoke('podcasts:refreshAll'),
 });

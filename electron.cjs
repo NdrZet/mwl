@@ -4,10 +4,93 @@ const url = require('url');
 const fs = require('fs');
 const musicMetadata = require('music-metadata');
 const crypto = require('crypto');
+const http = require('http');
+const https = require('https');
+let RSSParser = null; // инициализируем позже, если понадобится
 
 // Путь к файлу, где будут храниться треки. Он создастся в папке с данными приложения (например, AppData).
 const userDataPath = app.getPath('userData');
 const tracksFilePath = path.join(userDataPath, 'tracks.json');
+// Подкасты: директории и файл хранения
+const podcastsDir = path.join(userDataPath, 'podcasts');
+const podcastsImagesDir = path.join(podcastsDir, 'images');
+const podcastsAudioDir = path.join(podcastsDir, 'audio');
+const podcastsFilePath = path.join(podcastsDir, 'podcasts.json');
+
+function ensurePodcastDirs() {
+    try {
+        if (!fs.existsSync(podcastsDir)) fs.mkdirSync(podcastsDir, { recursive: true });
+        if (!fs.existsSync(podcastsImagesDir)) fs.mkdirSync(podcastsImagesDir, { recursive: true });
+        if (!fs.existsSync(podcastsAudioDir)) fs.mkdirSync(podcastsAudioDir, { recursive: true });
+    } catch {}
+}
+
+function loadPodcastsSafe() {
+    try {
+        ensurePodcastDirs();
+        if (fs.existsSync(podcastsFilePath)) {
+            const raw = fs.readFileSync(podcastsFilePath, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data)) return data;
+        }
+    } catch (e) {
+        console.error('Failed to load podcasts:', e);
+    }
+    return [];
+}
+
+function savePodcastsSafe(podcasts) {
+    try {
+        ensurePodcastDirs();
+        fs.writeFileSync(podcastsFilePath, JSON.stringify(podcasts, null, 2));
+    } catch (e) {
+        console.error('Failed to save podcasts:', e);
+    }
+}
+
+function fetchBuffer(urlStr) {
+    return new Promise((resolve) => {
+        try {
+            const mod = urlStr.startsWith('https') ? https : http;
+            const req = mod.get(urlStr, (res) => {
+                if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    // redirect
+                    fetchBuffer(res.headers.location).then(resolve).catch(() => resolve(null));
+                    return;
+                }
+                if (res.statusCode !== 200) { resolve(null); return; }
+                const chunks = [];
+                res.on('data', (c) => chunks.push(c));
+                res.on('end', () => {
+                    try { resolve(Buffer.concat(chunks)); } catch { resolve(null); }
+                });
+            });
+            req.on('error', () => resolve(null));
+            req.setTimeout(15000, () => { try { req.destroy(); } catch {}; resolve(null); });
+        } catch { resolve(null); }
+    });
+}
+
+function saveImageBufferToCache(buf) {
+    try {
+        ensurePodcastDirs();
+        const png = resizeToPng(buf, 1024) || buf;
+        const hash = crypto.createHash('md5').update(png).digest('hex');
+        const file = path.join(podcastsImagesDir, `${hash}.png`);
+        if (!fs.existsSync(file)) fs.writeFileSync(file, png);
+        return `file:///${file.replace(/\\/g,'/')}`;
+    } catch {}
+    return null;
+}
+
+async function cacheImageFromUrlMaybe(urlStr) {
+    try {
+        if (!urlStr) return null;
+        const buf = await fetchBuffer(urlStr);
+        if (!buf) return null;
+        return saveImageBufferToCache(buf);
+    } catch { return null; }
+}
 
 function createWindow() {
     // Убираем стандартное меню (File, Edit, etc.)
@@ -206,6 +289,128 @@ ipcMain.handle('get-cover-path', async (event, filePath) => {
         return await ensureCoverPath(filePath);
     } catch {
         return null;
+    }
+});
+
+// --- PODCASTS IPC ---
+ipcMain.handle('podcasts:getAll', () => {
+    try {
+        return loadPodcastsSafe();
+    } catch { return []; }
+});
+
+ipcMain.handle('podcasts:addByUrl', async (event, feedUrl) => {
+    try {
+        ensurePodcastDirs();
+        if (!RSSParser) {
+            try { RSSParser = require('rss-parser'); } catch (e) { console.error('rss-parser not installed'); return { ok: false, error: 'rss-parser not installed' }; }
+        }
+        const parser = new RSSParser({ timeout: 15000 });
+        const feed = await parser.parseURL(feedUrl);
+        const podcasts = loadPodcastsSafe();
+
+        const podcastId = crypto.createHash('md5').update(feed.feedUrl || feedUrl).digest('hex');
+        // Обложка подкаста
+        const imageUrl = (feed.itunes && feed.itunes.image) || feed.image?.url || null;
+        const imagePath = imageUrl ? await cacheImageFromUrlMaybe(imageUrl) : null;
+
+        const existingIndex = podcasts.findIndex(p => p.id === podcastId);
+        const basePodcast = {
+            id: podcastId,
+            title: feed.title || 'Podcast',
+            author: feed.itunes?.author || feed.managingEditor || feed.creator || '',
+            description: feed.description || '',
+            imagePath,
+            feedUrl,
+            lastUpdated: Date.now(),
+            episodes: []
+        };
+
+        const episodes = (feed.items || []).map((item) => {
+            const enclosureUrl = item.enclosure?.url || item.link || '';
+            return {
+                id: crypto.createHash('md5').update((item.guid || item.id || item.link || item.title || enclosureUrl) + feedUrl).digest('hex'),
+                title: item.title || 'Episode',
+                audioUrl: enclosureUrl,
+                pubDate: item.isoDate || item.pubDate || null,
+                duration: item.itunes?.duration || null,
+                descriptionHtml: item['content:encoded'] || item.content || '',
+                imagePath: imagePath, // можно уточнить per-item
+                playedSeconds: 0,
+                isPlayed: false,
+                filePath: null,
+            };
+        });
+
+        if (existingIndex >= 0) {
+            // Мержим: добавляем новые эпизоды, сохраняем старые состояния
+            const existing = podcasts[existingIndex];
+            const existingMap = new Map(existing.episodes.map(e => [e.id, e]));
+            const mergedEpisodes = [];
+            for (const ep of episodes) {
+                const old = existingMap.get(ep.id);
+                if (old) {
+                    mergedEpisodes.push({ ...ep, playedSeconds: old.playedSeconds || 0, isPlayed: old.isPlayed || false, filePath: old.filePath || null });
+                } else {
+                    mergedEpisodes.push(ep);
+                }
+            }
+            podcasts[existingIndex] = { ...existing, title: basePodcast.title, author: basePodcast.author, description: basePodcast.description, imagePath: basePodcast.imagePath || existing.imagePath, lastUpdated: Date.now(), episodes: mergedEpisodes };
+        } else {
+            podcasts.push({ ...basePodcast, episodes });
+        }
+
+        savePodcastsSafe(podcasts);
+        return { ok: true };
+    } catch (e) {
+        console.error('Add podcast failed', e);
+        return { ok: false, error: String(e && e.message || e) };
+    }
+});
+
+ipcMain.handle('podcasts:refreshAll', async () => {
+    try {
+        const podcasts = loadPodcastsSafe();
+        for (let i = 0; i < podcasts.length; i++) {
+            const p = podcasts[i];
+            try {
+                if (!RSSParser) RSSParser = require('rss-parser');
+                const parser = new RSSParser({ timeout: 15000 });
+                const feed = await parser.parseURL(p.feedUrl);
+                const imageUrl = (feed.itunes && feed.itunes.image) || feed.image?.url || null;
+                const imagePath = imageUrl ? await cacheImageFromUrlMaybe(imageUrl) : p.imagePath;
+                const items = feed.items || [];
+                const newEpisodes = items.map((item) => {
+                    const enclosureUrl = item.enclosure?.url || item.link || '';
+                    return {
+                        id: crypto.createHash('md5').update((item.guid || item.id || item.link || item.title || enclosureUrl) + p.feedUrl).digest('hex'),
+                        title: item.title || 'Episode',
+                        audioUrl: enclosureUrl,
+                        pubDate: item.isoDate || item.pubDate || null,
+                        duration: item.itunes?.duration || null,
+                        descriptionHtml: item['content:encoded'] || item.content || '',
+                        imagePath: imagePath,
+                        playedSeconds: 0,
+                        isPlayed: false,
+                        filePath: null,
+                    };
+                });
+                const existingMap = new Map(p.episodes.map(e => [e.id, e]));
+                const merged = [];
+                for (const ep of newEpisodes) {
+                    const old = existingMap.get(ep.id);
+                    if (old) merged.push({ ...ep, playedSeconds: old.playedSeconds || 0, isPlayed: old.isPlayed || false, filePath: old.filePath || null });
+                    else merged.push(ep);
+                }
+                podcasts[i] = { ...p, imagePath, episodes: merged, lastUpdated: Date.now() };
+            } catch (e) {
+                console.error('Refresh podcast failed', e);
+            }
+        }
+        savePodcastsSafe(podcasts);
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: String(e && e.message || e) };
     }
 });
 

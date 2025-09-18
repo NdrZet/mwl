@@ -19,8 +19,9 @@ import { Button } from './components/ui/button';
 import { ScrollArea } from './components/ui/scroll-area';
 import { Separator } from './components/ui/separator';
 import { AlbumsGrid } from './components/AlbumsGrid';
+import { Podcasts } from './components/Podcasts';
 
-type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums';
+type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'podcasts';
 
 // Мы вынесли всю основную часть в отдельный компонент для чистоты верстки
 const MainLayout = () => {
@@ -119,6 +120,13 @@ const MainLayout = () => {
                         <AlbumsGrid mode="all" />
                     </div>
                 );
+            case 'podcasts':
+                return (
+                    <div className="space-y-6">
+                        <h1 className="text-3xl font-bold">Podcasts</h1>
+                        <Podcasts />
+                    </div>
+                );
             case 'upload':
                 return (
                     <div className="space-y-6">
@@ -205,6 +213,16 @@ const MainLayout = () => {
                         >
                             <Library className="mr-3 h-5 w-5" />
                             Albums
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent ${
+                                currentView === 'podcasts' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
+                            }`}
+                            onClick={() => setCurrentView('podcasts')}
+                        >
+                            <Library className="mr-3 h-5 w-5" />
+                            Podcasts
                         </Button>
                         <Button
                             variant="ghost"
