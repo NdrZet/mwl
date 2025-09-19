@@ -13,7 +13,8 @@ import {
     Home,
     Search,
     Heart,
-    Plus
+    Plus,
+    Radio as RadioIcon
 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { ScrollArea } from './components/ui/scroll-area';
@@ -22,8 +23,9 @@ import { AlbumsGrid } from './components/AlbumsGrid';
 import { Podcasts } from './components/Podcasts';
 import { Titlebar } from './components/Titlebar';
 import { PodcastDetail } from './components/PodcastDetail';
+import { RadioPage } from './components/RadioPage';
 
-type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'podcasts' | 'podcastDetail';
+type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'podcasts' | 'podcastDetail' | 'radio';
 
 // Мы вынесли всю основную часть в отдельный компонент для чистоты верстки
 const MainLayout = () => {
@@ -40,7 +42,7 @@ const MainLayout = () => {
         { id: 'library' as View, label: 'Your Library', icon: Library },
     ];
 
-    const viewsOrder: View[] = ['home', 'search', 'library', 'playlists', 'albums', 'podcasts', 'upload', 'liked', 'podcastDetail'];
+    const viewsOrder: View[] = ['home', 'search', 'library', 'playlists', 'albums', 'podcasts', 'radio', 'upload', 'liked', 'podcastDetail'];
 
     const navigate = (next: View) => {
         if (next === currentView) return;
@@ -169,6 +171,13 @@ const MainLayout = () => {
                         <AlbumsGrid mode="all" />
                     </div>
                 );
+            case 'radio':
+                return (
+                    <div className="space-y-6">
+                        <h1 className="text-3xl font-bold text-crisp">Radio</h1>
+                        <RadioPage />
+                    </div>
+                );
             case 'podcasts':
                 return (
                     <div className="space-y-6">
@@ -268,6 +277,16 @@ const MainLayout = () => {
                         >
                             <Library className="mr-3 h-5 w-5" />
                             Albums
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
+                                currentView === 'radio' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
+                            }`}
+                            onClick={() => navigate('radio')}
+                        >
+                            <RadioIcon className="mr-3 h-5 w-5" />
+                            Radio
                         </Button>
                         <Button
                             variant="ghost"

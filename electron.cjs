@@ -16,6 +16,8 @@ const podcastsDir = path.join(userDataPath, 'podcasts');
 const podcastsImagesDir = path.join(podcastsDir, 'images');
 const podcastsAudioDir = path.join(podcastsDir, 'audio');
 const podcastsFilePath = path.join(podcastsDir, 'podcasts.json');
+// Радио: файл хранения
+const radioFilePath = path.join(userDataPath, 'radio.json');
 
 function ensurePodcastDirs() {
     try {
@@ -45,6 +47,28 @@ function savePodcastsSafe(podcasts) {
         fs.writeFileSync(podcastsFilePath, JSON.stringify(podcasts, null, 2));
     } catch (e) {
         console.error('Failed to save podcasts:', e);
+    }
+}
+
+// --- RADIO STORAGE ---
+function loadRadioSafe() {
+    try {
+        if (fs.existsSync(radioFilePath)) {
+            const raw = fs.readFileSync(radioFilePath, 'utf8');
+            const data = JSON.parse(raw);
+            if (Array.isArray(data)) return data;
+        }
+    } catch (e) {
+        console.error('Failed to load radio stations:', e);
+    }
+    return [];
+}
+
+function saveRadioSafe(stations) {
+    try {
+        fs.writeFileSync(radioFilePath, JSON.stringify(stations, null, 2));
+    } catch (e) {
+        console.error('Failed to save radio stations:', e);
     }
 }
 
@@ -464,6 +488,16 @@ ipcMain.handle('podcasts:refreshAll', async () => {
     } catch (e) {
         return { ok: false, error: String(e && e.message || e) };
     }
+});
+
+// --- RADIO IPC ---
+ipcMain.handle('radio:getAll', () => {
+    try { return loadRadioSafe(); } catch { return []; }
+});
+
+ipcMain.handle('radio:saveAll', (event, stations) => {
+    try { saveRadioSafe(Array.isArray(stations) ? stations : []); return { ok: true }; }
+    catch (e) { return { ok: false, error: String(e && e.message || e) }; }
 });
 
 ipcMain.handle('podcasts:remove', async (event, podcastId) => {

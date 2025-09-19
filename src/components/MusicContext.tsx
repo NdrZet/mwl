@@ -19,6 +19,13 @@ export interface Playlist {
   createdAt: Date;
 }
 
+export interface RadioStation {
+  id: string;
+  name: string;
+  url: string;
+  image?: string | null;
+}
+
 // Типы для "моста" preload.js
 declare global {
   interface Window {
@@ -30,6 +37,10 @@ declare global {
       podcastsGetAll?: () => Promise<any[]>;
       podcastsAddByUrl?: (feedUrl: string) => Promise<{ ok: boolean; error?: string }>;
       podcastsRefreshAll?: () => Promise<{ ok: boolean; error?: string }>;
+      podcastsRemove?: (podcastId: string) => Promise<{ ok: boolean; error?: string }>;
+      // radio
+      radioGetAll?: () => Promise<RadioStation[]>;
+      radioSaveAll?: (stations: RadioStation[]) => Promise<{ ok: boolean; error?: string }>;
     }
   }
 }
@@ -59,6 +70,11 @@ export interface MusicContextType {
   queue: Track[];
   setQueue: (tracks: Track[]) => void;
   currentQueueIndex: number;
+  // radio
+  radioStations: RadioStation[];
+  addRadioStation: (station: Omit<RadioStation, 'id'>) => void;
+  removeRadioStation: (id: string) => void;
+  playRadioStation: (stationId: string) => void;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
@@ -80,6 +96,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [volume, setVolumeState] = useState(1);
   const [queue, setQueue] = useState<Track[]>([]);
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
+  const [radioStations, setRadioStations] = useState<RadioStation[]>([]);
+  const isRadioRef = useRef<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement>(new Audio());
   const tracksRef = useRef<Track[]>([]);
@@ -130,6 +148,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setTracks(withCovers);
       };
       loadInitialTracks();
+      // load radio
+      (async () => {
+        try {
+          const stations = await window.electronAPI!.radioGetAll?.();
+          if (stations && Array.isArray(stations)) setRadioStations(stations);
+        } catch {}
+      })();
     } else {
       const savedTracks = localStorage.getItem('musicApp_tracks');
       if (savedTracks) {
@@ -358,6 +383,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // Это новый трек, устанавливаем src и играем
+    isRadioRef.current = false;
     setCurrentTrack(trackToPlay);
     // Формируем корректный src для локальных файлов под Windows и фоллбэки для blob/data
     // корректная формула: для blob/data/http используем как есть; для файловых путей строим file:///
@@ -432,7 +458,41 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const contextValue: MusicContextType = {
     tracks, addTrack, removeTrack, playlists, createPlaylist, deletePlaylist, addToPlaylist, removeFromPlaylist,
     currentTrack, isPlaying, currentTime, duration, volume, play, pause, togglePlay, next, previous, seek, setVolume,
-    queue, setQueue, currentQueueIndex
+    queue, setQueue, currentQueueIndex,
+    radioStations,
+    addRadioStation: (station) => {
+      const withId: RadioStation = { id: generateTrackId(), name: station.name, url: station.url, image: station.image || null };
+      setRadioStations(prev => {
+        const next = [...prev, withId];
+        window.electronAPI?.radioSaveAll?.(next);
+        return next;
+      });
+    },
+    removeRadioStation: (id) => {
+      setRadioStations(prev => {
+        const next = prev.filter(s => s.id !== id);
+        window.electronAPI?.radioSaveAll?.(next);
+        return next;
+      });
+    },
+    playRadioStation: (stationId) => {
+      const st = radioStations.find(s => s.id === stationId);
+      if (!st) return;
+      const audio = audioRef.current;
+      isRadioRef.current = true;
+      setCurrentTrack({
+        id: stationId,
+        name: st.name,
+        artist: 'Web Radio',
+        album: 'Stream',
+        duration: 0,
+        path: st.url,
+        cover: st.image || null,
+      });
+      audio.src = st.url;
+      audio.currentTime = 0;
+      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    }
   };
 
   return <MusicContext.Provider value={contextValue}>{children}</MusicContext.Provider>;

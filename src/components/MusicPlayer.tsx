@@ -16,6 +16,7 @@ export const MusicPlayer: React.FC = () => {
     currentTrack, isPlaying, currentTime, duration, volume,
     togglePlay, next, previous, seek, setVolume
   } = useMusicContext();
+  const isLive = currentTrack && (currentTrack.album === 'Stream' || currentTrack.duration === 0);
 
   const handleProgressChange = (value: number[]) => seek(value[0]);
   const handleVolumeChange = (value: number[]) => setVolume(value[0]);
@@ -101,19 +102,28 @@ export const MusicPlayer: React.FC = () => {
               </Button>
             </div>
             <div className="flex items-center space-x-3 w-full max-w-4xl">
-              <span className="text-xs text-sidebar-accent-foreground w-10 text-right">
-                {formatTime(currentTime)}
-              </span>
-              <Slider
-                value={[isNaN(currentTime) ? 0 : currentTime]}
-                onValueChange={handleProgressChange}
-                max={isNaN(duration) || !duration ? 0 : duration}
-                step={1}
-                className="flex-1"
-              />
-              <span className="text-xs text-sidebar-accent-foreground w-10">
-                {formatTime(duration)}
-              </span>
+              {isLive ? (
+                <div className="flex items-center text-xs text-primary/90">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" />
+                  LIVE
+                </div>
+              ) : (
+                <>
+                  <span className="text-xs text-sidebar-accent-foreground w-10 text-right">
+                    {formatTime(currentTime)}
+                  </span>
+                  <Slider
+                    value={[isNaN(currentTime) ? 0 : currentTime]}
+                    onValueChange={handleProgressChange}
+                    max={isNaN(duration) || !duration ? 0 : duration}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-sidebar-accent-foreground w-10">
+                    {formatTime(duration)}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
