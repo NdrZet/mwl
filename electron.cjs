@@ -104,6 +104,7 @@ function createWindow() {
         icon: path.join(__dirname, 'dist', 'icon.ico'),
         frame: false, // кастомный заголовок
         titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
+        show: false, // покажем после готовности, чтобы анимировать появление
         webPreferences: {
             // Указываем наш "мост" для связи с React
             preload: path.join(__dirname, 'preload.js'),
@@ -123,6 +124,26 @@ function createWindow() {
     });
 
     mainWindow.loadURL(startUrl);
+
+    // Плавное появление окна после готовности
+    try {
+        mainWindow.setOpacity(0);
+    } catch {}
+    mainWindow.once('ready-to-show', () => {
+        try { mainWindow.show(); } catch {}
+        // простая анимация до полной непрозрачности ~200-250мс
+        let current = 0;
+        const step = 0.08; // 12-13 шагов * 16мс ≈ 200мс
+        const timer = setInterval(() => {
+            try {
+                current = Math.min(1, current + step);
+                mainWindow.setOpacity(current);
+                if (current >= 1) clearInterval(timer);
+            } catch {
+                clearInterval(timer);
+            }
+        }, 16);
+    });
 
     // Прокидываем события изменения состояния окна в рендерер
     mainWindow.on('maximize', () => {

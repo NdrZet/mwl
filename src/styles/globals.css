@@ -106,9 +106,37 @@
     background: var(--muted-foreground);
 }
 
-/* Smooth transitions */
+/* Smooth transitions (без глобальных transform/opacity, чтобы убрать дергания текста) */
 * {
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
+    transition-duration: 200ms;
+}
+
+/* Утилиты для появления контента приложения */
+@layer utilities {
+    .app-fade-in {
+        @apply animate-in fade-in-0 duration-300 ease-out;
+    }
+    .view-anim-in-right { @apply animate-in fade-in-0 slide-in-from-right-2 duration-200 ease-out transform-gpu; }
+    .view-anim-in-left { @apply animate-in fade-in-0 slide-in-from-left-2 duration-200 ease-out transform-gpu; }
+    .view-anim-out-left { @apply animate-out fade-out-0 slide-out-to-left-2 duration-200 ease-in transform-gpu; }
+    .view-anim-out-right { @apply animate-out fade-out-0 slide-out-to-right-2 duration-200 ease-in transform-gpu; }
+    /* Вертикальный свайп (объёмный) */
+    /* Более лёгкие keyframes только на transform */
+    @keyframes slide-up-in-fast {
+        0%   { transform: translate3d(0,20px,0); }
+        100% { transform: translate3d(0,0,0); }
+    }
+    .elevate-in-up  { animation: slide-up-in-fast  140ms cubic-bezier(.2,.8,.2,1) both; will-change: transform; backface-visibility: hidden; transform: translateZ(0); }
+    .will-change-transform { will-change: transform, opacity; backface-visibility: hidden; }
+    .text-crisp { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+    .contain-paint { contain: paint; }
+
+    /* Tap-to-navigate feedback for home cards */
+    @keyframes card-tap-out {
+        0%   { transform: translate3d(0,0,0) scale(1); }
+        100% { transform: translate3d(0,-8px,0) scale(0.99); }
+    }
+    .card-tap-out { animation: card-tap-out 120ms ease-out both; will-change: transform; transform: translateZ(0); }
 }

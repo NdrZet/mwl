@@ -79,7 +79,7 @@ export const PlaylistManager: React.FC = () => {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1>Your Playlists</h1>
+        <h1 className="text-3xl font-bold text-crisp">Your Playlists</h1>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
