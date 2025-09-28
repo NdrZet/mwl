@@ -19,7 +19,7 @@
     "forge": {
       "packagerConfig": {
         "prune": true,
-        "icon": "assets/icon"
+        "icon": "public/icon.ico"
       },
       "makers": [
         {
