@@ -16,7 +16,7 @@ const podcastsDir = path.join(userDataPath, 'podcasts');
 const podcastsImagesDir = path.join(podcastsDir, 'images');
 const podcastsAudioDir = path.join(podcastsDir, 'audio');
 const podcastsFilePath = path.join(podcastsDir, 'podcasts.json');
-// Радио: файл хранения
+// Радио: файл хранен
 const radioFilePath = path.join(userDataPath, 'radio.json');
 
 function ensurePodcastDirs() {
