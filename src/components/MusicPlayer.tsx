@@ -1,205 +1,457 @@
-import React from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Music, Heart, Repeat, Shuffle, Maximize2, X } from 'lucide-react';
-import { Button } from './ui/button';
-import { Slider } from './ui/slider';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Play, Pause, SkipBack, SkipForward,
+  Volume2, Volume1, VolumeX, Music, ChevronDown, Maximize2,
+} from 'lucide-react';
 import { useMusicContext } from './MusicContext';
 
-const formatTime = (seconds: number): string => {
-  if (isNaN(seconds)) return '0:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+const formatTime = (s: number): string => {
+  if (!isFinite(s) || isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 };
 
+// ── Animated EQ bars ─────────────────────────────────────────
+const EqBars: React.FC<{ active: boolean }> = ({ active }) => (
+  <div className="flex items-end gap-[2px] h-3.5" aria-hidden="true">
+    {([1, 2, 3] as const).map(i => (
+      <span
+        key={i}
+        className="w-[3px] rounded-full bg-primary block"
+        style={{
+          height: active ? '100%' : '35%',
+          animation: active
+            ? `player-eq-${i} ${0.45 + i * 0.14}s ease-in-out infinite alternate`
+            : 'none',
+          transition: 'height 0.18s ease',
+        }}
+      />
+    ))}
+  </div>
+);
+
+// ── Draggable progress / volume bar ──────────────────────────
+const ProgressBar: React.FC<{
+  value: number;          // 0..1
+  onChange: (v: number) => void;
+  className?: string;
+}> = ({ value, onChange, className = '' }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [hov, setHov] = useState(false);
+  const [drag, setDrag] = useState(false);
+
+  const getVal = (clientX: number) => {
+    if (!ref.current) return 0;
+    const { left, width } = ref.current.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - left) / width));
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    setDrag(true);
+    onChange(getVal(e.clientX));
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const move = (e: MouseEvent) => onChange(getVal(e.clientX));
+    const up = () => setDrag(false);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    return () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+  }, [drag, onChange]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const active = hov || drag;
+
+  return (
+    <div
+      ref={ref}
+      className={`relative flex items-center cursor-pointer select-none ${className}`}
+      style={{ height: 14 }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      onMouseDown={onMouseDown}
+    >
+      {/* Track */}
+      <div
+        className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full overflow-hidden"
+        style={{
+          background: 'rgba(255,255,255,0.13)',
+          height: active ? 5 : 3,
+          transition: 'height 0.15s ease',
+        }}
+      >
+        <div
+          className="h-full bg-primary rounded-full"
+          style={{
+            width: `${value * 100}%`,
+            transition: drag ? 'none' : 'width 0.08s linear',
+          }}
+        />
+      </div>
+      {/* Thumb */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md pointer-events-none"
+        style={{
+          left: `calc(${value * 100}% - 6px)`,
+          opacity: active ? 1 : 0,
+          transition: 'opacity 0.12s ease',
+        }}
+      />
+    </div>
+  );
+};
+
+// ── Main component ───────────────────────────────────────────
 export const MusicPlayer: React.FC = () => {
   const {
     currentTrack, isPlaying, currentTime, duration, volume,
-    togglePlay, next, previous, seek, setVolume
+    togglePlay, next, previous, seek, setVolume,
   } = useMusicContext();
-  const isLive = currentTrack && (currentTrack.album === 'Stream' || currentTrack.duration === 0);
 
-  const handleProgressChange = (value: number[]) => seek(value[0]);
-  const handleVolumeChange = (value: number[]) => setVolume(value[0]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fsVisible, setFsVisible]       = useState(false);
+  const [infoVisible, setInfoVisible]   = useState(true);
+  const prevTrackIdRef = useRef<string | null>(null);
 
-  const handleVolumeWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.05 : 0.05;
-    const newVolume = Math.max(0, Math.min(1, (volume || 1) + delta));
-    setVolume(newVolume);
-  };
+  const isLive    = currentTrack && (currentTrack.album === 'Stream' || currentTrack.duration === 0);
+  const progress  = duration > 0 && isFinite(currentTime) ? currentTime / duration : 0;
+  const VolumeIcon = !volume ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const [fsAnimatingIn, setFsAnimatingIn] = React.useState(false);
+  // ── Track-change animation ───────────────────────────────
+  useEffect(() => {
+    if (!currentTrack?.id) return;
+    if (currentTrack.id === prevTrackIdRef.current) return;
+    prevTrackIdRef.current = currentTrack.id;
+    setInfoVisible(false);
+    const t = setTimeout(() => setInfoVisible(true), 100);
+    return () => clearTimeout(t);
+  }, [currentTrack?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const closeFullscreen = useCallback(() => {
+    setFsVisible(false);
+    setTimeout(() => setIsFullscreen(false), 260);
+  }, []);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') closeFullscreen(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [isFullscreen, closeFullscreen]);
 
   const openFullscreen = () => {
     setIsFullscreen(true);
-    requestAnimationFrame(() => setFsAnimatingIn(true));
-  };
-  const closeFullscreen = () => {
-    setFsAnimatingIn(false);
-    setTimeout(() => setIsFullscreen(false), 200);
+    requestAnimationFrame(() => setTimeout(() => setFsVisible(true), 16));
   };
 
-  React.useEffect(() => {
-    if (!isFullscreen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeFullscreen();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isFullscreen]);
+  const handleVolumeWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setVolume(Math.max(0, Math.min(1, (volume || 1) + (e.deltaY > 0 ? -0.05 : 0.05))));
+  };
 
-  // --- ВОТ ЭТА ПРОВЕРКА РЕШАЕТ ВСЕ ---
-  // Если трек не выбран, показываем заглушку и выходим.
+  // ── Empty state ──────────────────────────────────────────
   if (!currentTrack) {
     return (
-        <div className="h-24 bg-sidebar border-t border-sidebar-border px-4 py-3">
-          <div className="flex items-center justify-center h-full text-sidebar-accent-foreground">
-            <Music className="mr-2 h-5 w-5" />
-            Select a track to start playing
-          </div>
-        </div>
+      <div className="player-bar player-bar--empty">
+        <Music className="h-4 w-4 mr-2 text-sidebar-accent-foreground/40" />
+        <span className="text-sm text-sidebar-accent-foreground/40">Выберите трек для воспроизведения</span>
+      </div>
     );
   }
-  // ------------------------------------
 
-  // Если мы дошли до сюда, значит currentTrack ТОЧНО существует, и ошибок не будет.
   return (
-      <div className="h-24 bg-sidebar border-t border-sidebar-border px-4 py-3">
-        <div className={`grid grid-cols-3 items-center h-full ${isFullscreen ? 'hidden' : ''}`}>
-          {/* Left: Track Info */}
-          <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-14 h-14 rounded flex items-center justify-center flex-shrink-0 overflow-hidden bg-muted">
-              {currentTrack.cover ? (
-                  <img src={currentTrack.cover} alt={currentTrack.name} className="w-full h-full object-cover" />
-              ) : (
-                  <Music className="h-6 w-6 text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sidebar-foreground font-medium">{currentTrack.name}</p>
-              <p className="text-sidebar-accent-foreground truncate text-sm">{currentTrack.artist}</p>
-            </div>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-sidebar-accent-foreground hover:text-primary">
-              <Heart className="h-4 w-4" />
-            </Button>
-          </div>
+    <>
+      {/* ═══════════════ Compact bar ═══════════════ */}
+      <div className="player-bar">
 
-          {/* Center: Player Controls */}
-          <div className="flex flex-col items-center space-y-2 w-full max-w-4xl mx-auto px-4">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-sidebar-accent-foreground hover:text-sidebar-foreground" onClick={previous}>
-                <SkipBack className="h-4 w-4" />
-              </Button>
-              <Button
-                className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={togglePlay}
-              >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-sidebar-accent-foreground hover:text-sidebar-foreground" onClick={next}>
-                <SkipForward className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex items-center space-x-3 w-full max-w-4xl">
-              {isLive ? (
-                <div className="flex items-center text-xs text-primary/90">
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse" />
-                  LIVE
-                </div>
-              ) : (
-                <>
-                  <span className="text-xs text-sidebar-accent-foreground w-10 text-right">
-                    {formatTime(currentTime)}
-                  </span>
-                  <Slider
-                    value={[isNaN(currentTime) ? 0 : currentTime]}
-                    onValueChange={handleProgressChange}
-                    max={isNaN(duration) || !duration ? 0 : duration}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-sidebar-accent-foreground w-10">
-                    {formatTime(duration)}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Volume Control */}
-          <div className="flex items-center justify-end space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-sidebar-accent-foreground hover:text-sidebar-foreground"
-              onClick={openFullscreen}
-              aria-label="Open fullscreen player"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <Volume2 className="h-4 w-4 text-sidebar-accent-foreground" />
-            <div onWheel={handleVolumeWheel}>
-              <Slider
-                value={[typeof volume === 'number' ? volume : 1]}
-                onValueChange={handleVolumeChange}
-                max={1}
-                step={0.01}
-                className="w-24"
-              />
-            </div>
-          </div>
-        </div>
-        {isFullscreen && (
-          <div className="fixed inset-0 z-50 bg-background">
-            <button
-              onClick={closeFullscreen}
-              className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground/80 hover:text-foreground hover:bg-muted"
-              aria-label="Close fullscreen"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="h-full w-full flex flex-col items-center justify-center px-6">
-              <div
-                className={`transition-all duration-200 ease-out ${fsAnimatingIn ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-95 -translate-x-10'} origin-left`}
-              >
-                <div className="w-[75vmin] h-[75vmin] max-w-[900px] max-h-[900px] rounded-xl overflow-hidden bg-muted shadow-2xl">
-                  {currentTrack.cover ? (
-                    <img src={currentTrack.cover} alt={currentTrack.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Music className="h-24 w-24 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className={`mt-8 flex items-center space-x-6 transition-opacity duration-200 ${fsAnimatingIn ? 'opacity-100' : 'opacity-0'}`}>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="h-12 w-12 p-0 rounded-full text-foreground hover:text-foreground"
-                  onClick={previous}
-                >
-                  <SkipBack className="h-6 w-6" />
-                </Button>
-                <Button
-                  className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                  onClick={togglePlay}
-                >
-                  {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  className="h-12 w-12 p-0 rounded-full text-foreground hover:text-foreground"
-                  onClick={next}
-                >
-                  <SkipForward className="h-6 w-6" />
-                </Button>
-              </div>
-            </div>
+        {/* Ambient glow from cover art */}
+        {currentTrack.cover && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+            <img
+              src={currentTrack.cover}
+              alt=""
+              className="w-full h-full object-cover scale-150 blur-3xl"
+              style={{ opacity: 0.09 }}
+            />
           </div>
         )}
+
+        <div
+          className="relative z-10 h-full grid items-center px-4 gap-2"
+          style={{ gridTemplateColumns: '1fr auto 1fr' }}
+        >
+
+          {/* ── Left: cover + info ─────────────────── */}
+          <div className="flex items-center gap-3 min-w-0">
+
+            {/* Album art */}
+            <div
+              className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer group shadow-md"
+              onClick={openFullscreen}
+              title="Открыть полноэкранный плеер"
+            >
+              {currentTrack.cover
+                ? <img
+                    src={currentTrack.cover}
+                    alt={currentTrack.name}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                : <div className="w-full h-full bg-sidebar-accent flex items-center justify-center">
+                    <Music className="h-5 w-5 text-sidebar-accent-foreground" />
+                  </div>
+              }
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Maximize2 className="h-3 w-3 text-white" />
+              </div>
+            </div>
+
+            {/* Track name + artist */}
+            <div
+              className="min-w-0 flex-1"
+              style={{
+                opacity:    infoVisible ? 1 : 0,
+                transform:  infoVisible ? 'translateY(0)' : 'translateY(5px)',
+                transition: 'opacity 0.12s ease, transform 0.12s ease',
+              }}
+            >
+              <p className="text-sm font-semibold text-sidebar-foreground truncate leading-tight">
+                {currentTrack.name}
+              </p>
+              <p className="text-xs text-sidebar-accent-foreground truncate mt-0.5">
+                {currentTrack.artist}
+              </p>
+            </div>
+
+            {/* EQ indicator */}
+            {isPlaying && !isLive && (
+              <div className="flex-shrink-0">
+                <EqBars active />
+              </div>
+            )}
+          </div>
+
+          {/* ── Center: controls + progress ────────── */}
+          <div
+            className="flex flex-col items-center gap-1.5"
+            style={{ width: 'clamp(260px, 35vw, 420px)' }}
+          >
+            <div className="flex items-center gap-3">
+              <button className="player-btn" onClick={previous} aria-label="Назад">
+                <SkipBack className="h-[18px] w-[18px]" />
+              </button>
+              <button
+                className="player-play-btn"
+                onClick={togglePlay}
+                aria-label={isPlaying ? 'Пауза' : 'Играть'}
+              >
+                {isPlaying
+                  ? <Pause className="h-[18px] w-[18px]" />
+                  : <Play  className="h-[18px] w-[18px] translate-x-px" />
+                }
+              </button>
+              <button className="player-btn" onClick={next} aria-label="Вперёд">
+                <SkipForward className="h-[18px] w-[18px]" />
+              </button>
+            </div>
+
+            {isLive
+              ? <div className="flex items-center gap-1.5 text-xs font-semibold text-red-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  LIVE
+                </div>
+              : <div className="flex items-center gap-2 w-full">
+                  <span className="text-[10px] tabular-nums text-sidebar-accent-foreground w-8 text-right">
+                    {formatTime(currentTime)}
+                  </span>
+                  <ProgressBar
+                    value={progress}
+                    onChange={v => seek(v * duration)}
+                    className="flex-1"
+                  />
+                  <span className="text-[10px] tabular-nums text-sidebar-accent-foreground w-8">
+                    {formatTime(duration)}
+                  </span>
+                </div>
+            }
+          </div>
+
+          {/* ── Right: volume ──────────────────────── */}
+          <div
+            className="flex items-center justify-end gap-2"
+            onWheel={handleVolumeWheel}
+          >
+            <button
+              className="player-btn"
+              onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+              aria-label="Mute"
+            >
+              <VolumeIcon className="h-4 w-4" />
+            </button>
+            <ProgressBar
+              value={typeof volume === 'number' ? volume : 1}
+              onChange={setVolume}
+              className="w-24"
+            />
+          </div>
+        </div>
       </div>
+
+      {/* ═══════════════ Fullscreen overlay ═══════════════ */}
+      {isFullscreen && (
+        <div className={`player-fs ${fsVisible ? 'player-fs--in' : ''}`}>
+
+          {/* Blurred background */}
+          <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+            {currentTrack.cover
+              ? <img
+                  src={currentTrack.cover}
+                  alt=""
+                  className="w-full h-full object-cover scale-150"
+                  style={{ filter: 'blur(60px) brightness(0.45) saturate(1.4)' }}
+                />
+              : <div className="w-full h-full" style={{ background: '#0d0d0d' }} />
+            }
+            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.18)' }} />
+          </div>
+
+          {/* Close button */}
+          <button
+            className="player-fs-close"
+            onClick={closeFullscreen}
+            aria-label="Закрыть"
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+
+          {/* Main content column */}
+          <div className="relative z-10 h-full flex flex-col items-center justify-center gap-7 px-8 py-10">
+
+            {/* ── Vinyl record ──────────────────────── */}
+            <div className="player-vinyl-outer">
+              <div className={`player-vinyl__disc ${isPlaying ? 'player-vinyl__disc--spin' : ''}`}>
+                <div className="player-vinyl__label">
+                  {currentTrack.cover
+                    ? <img
+                        src={currentTrack.cover}
+                        alt={currentTrack.name}
+                        className="w-full h-full object-cover"
+                      />
+                    : <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ background: '#1e1e1e' }}
+                      >
+                        <Music className="text-neutral-600" style={{ width: '32%', height: '32%' }} />
+                      </div>
+                  }
+                </div>
+                <div className="player-vinyl__hole" />
+              </div>
+            </div>
+
+            {/* ── Track info ────────────────────────── */}
+            <div
+              className="text-center"
+              style={{
+                opacity:    fsVisible ? 1 : 0,
+                transform:  fsVisible ? 'translateY(0)' : 'translateY(8px)',
+                transition: 'opacity 0.22s ease 0.04s, transform 0.22s ease 0.04s',
+              }}
+            >
+              <p className="text-2xl font-bold text-white leading-tight">
+                {currentTrack.name}
+              </p>
+              <p className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                {currentTrack.artist}
+              </p>
+              {currentTrack.album && currentTrack.album !== 'Stream' && (
+                <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {currentTrack.album}
+                </p>
+              )}
+            </div>
+
+            {/* ── Progress ──────────────────────────── */}
+            {isLive
+              ? <div className="flex items-center gap-2 font-semibold text-red-400">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  LIVE
+                </div>
+              : <div
+                  className="w-full max-w-sm"
+                  style={{ opacity: fsVisible ? 1 : 0, transition: 'opacity 0.22s ease 0.07s' }}
+                >
+                  <ProgressBar
+                    value={progress}
+                    onChange={v => seek(v * duration)}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between mt-2">
+                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      {formatTime(currentTime)}
+                    </span>
+                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      {formatTime(duration)}
+                    </span>
+                  </div>
+                </div>
+            }
+
+            {/* ── Playback controls ─────────────────── */}
+            <div
+              className="flex items-center gap-5"
+              style={{
+                opacity:    fsVisible ? 1 : 0,
+                transform:  fsVisible ? 'translateY(0)' : 'translateY(8px)',
+                transition: 'opacity 0.22s ease 0.1s, transform 0.22s ease 0.1s',
+              }}
+            >
+              <button className="player-fs-btn" onClick={previous} aria-label="Назад">
+                <SkipBack className="h-6 w-6" />
+              </button>
+              <button
+                className="player-fs-play"
+                onClick={togglePlay}
+                aria-label={isPlaying ? 'Пауза' : 'Играть'}
+              >
+                {isPlaying
+                  ? <Pause className="h-7 w-7" />
+                  : <Play  className="h-7 w-7 translate-x-0.5" />
+                }
+              </button>
+              <button className="player-fs-btn" onClick={next} aria-label="Вперёд">
+                <SkipForward className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* ── Volume ────────────────────────────── */}
+            <div
+              className="flex items-center gap-3"
+              style={{ opacity: fsVisible ? 1 : 0, transition: 'opacity 0.22s ease 0.13s' }}
+              onWheel={handleVolumeWheel}
+            >
+              <button
+                className="transition-colors duration-150"
+                style={{ color: 'rgba(255,255,255,0.4)' }}
+                onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                aria-label="Mute"
+                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+              >
+                <VolumeIcon className="h-4 w-4" />
+              </button>
+              <ProgressBar
+                value={typeof volume === 'number' ? volume : 1}
+                onChange={setVolume}
+                className="w-32"
+              />
+            </div>
+
+          </div>
+        </div>
+      )}
+    </>
   );
 };
