@@ -104,6 +104,17 @@ const ProgressBar: React.FC<{
   );
 };
 
+// ── Window size hook ─────────────────────────────────────────
+const useWindowSize = () => {
+  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return size;
+};
+
 // ── Main component ───────────────────────────────────────────
 export const MusicPlayer: React.FC = () => {
   const {
@@ -111,10 +122,24 @@ export const MusicPlayer: React.FC = () => {
     togglePlay, next, previous, seek, setVolume,
   } = useMusicContext();
 
+  const { w, h } = useWindowSize();
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fsVisible, setFsVisible]       = useState(false);
   const [infoVisible, setInfoVisible]   = useState(true);
   const prevTrackIdRef = useRef<string | null>(null);
+
+  // ── Responsive breakpoints ───────────────────────────────
+  const hideVolume      = w < 700;          // скрыть громкость
+  const hideTimestamps  = w < 540;          // скрыть метки времени
+  const compactCover    = w < 480;          // уменьшить обложку
+  const centerMaxW      = w < 500 ? 'clamp(160px, 45vw, 240px)' : 'clamp(260px, 35vw, 420px)';
+  const barGrid         = hideVolume ? '1fr auto' : '1fr auto 1fr';
+
+  // Fullscreen — адаптация по высоте окна
+  const fsGap           = h < 580 ? 'gap-3' : h < 720 ? 'gap-4' : 'gap-7';
+  const fsPy            = h < 580 ? 'py-3'  : h < 720 ? 'py-5'  : 'py-10';
+  const showFsVolume    = h >= 500;
 
   const isLive    = currentTrack && (currentTrack.album === 'Stream' || currentTrack.duration === 0);
   const progress  = duration > 0 && isFinite(currentTime) ? currentTime / duration : 0;
@@ -181,7 +206,7 @@ export const MusicPlayer: React.FC = () => {
 
         <div
           className="relative z-10 h-full grid items-center px-4 gap-2"
-          style={{ gridTemplateColumns: '1fr auto 1fr' }}
+          style={{ gridTemplateColumns: barGrid }}
         >
 
           {/* ── Left: cover + info ─────────────────── */}
@@ -189,7 +214,8 @@ export const MusicPlayer: React.FC = () => {
 
             {/* Album art */}
             <div
-              className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer group shadow-md"
+              className={`relative ${compactCover ? 'w-9 h-9' : 'w-12 h-12'} rounded-lg overflow-hidden flex-shrink-0 cursor-pointer group shadow-md`}
+              style={{ transition: 'width 0.2s ease, height 0.2s ease' }}
               onClick={openFullscreen}
               title="Открыть полноэкранный плеер"
             >
@@ -236,7 +262,7 @@ export const MusicPlayer: React.FC = () => {
           {/* ── Center: controls + progress ────────── */}
           <div
             className="flex flex-col items-center gap-1.5"
-            style={{ width: 'clamp(260px, 35vw, 420px)' }}
+            style={{ width: centerMaxW }}
           >
             <div className="flex items-center gap-3">
               <button className="player-btn" onClick={previous} aria-label="Назад">
@@ -263,23 +289,27 @@ export const MusicPlayer: React.FC = () => {
                   LIVE
                 </div>
               : <div className="flex items-center gap-2 w-full">
-                  <span className="text-[10px] tabular-nums text-sidebar-accent-foreground w-8 text-right">
-                    {formatTime(currentTime)}
-                  </span>
+                  {!hideTimestamps && (
+                    <span className="text-[10px] tabular-nums text-sidebar-accent-foreground w-8 text-right">
+                      {formatTime(currentTime)}
+                    </span>
+                  )}
                   <ProgressBar
                     value={progress}
                     onChange={v => seek(v * duration)}
                     className="flex-1"
                   />
-                  <span className="text-[10px] tabular-nums text-sidebar-accent-foreground w-8">
-                    {formatTime(duration)}
-                  </span>
+                  {!hideTimestamps && (
+                    <span className="text-[10px] tabular-nums text-sidebar-accent-foreground w-8">
+                      {formatTime(duration)}
+                    </span>
+                  )}
                 </div>
             }
           </div>
 
           {/* ── Right: volume ──────────────────────── */}
-          <div
+          {!hideVolume && <div
             className="flex items-center justify-end gap-2"
             onWheel={handleVolumeWheel}
           >
@@ -295,7 +325,7 @@ export const MusicPlayer: React.FC = () => {
               onChange={setVolume}
               className="w-24"
             />
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -327,7 +357,7 @@ export const MusicPlayer: React.FC = () => {
           </button>
 
           {/* Main content column */}
-          <div className="relative z-10 h-full flex flex-col items-center justify-center gap-7 px-8 py-10">
+          <div className={`relative z-10 h-full flex flex-col items-center justify-center ${fsGap} px-8 ${fsPy}`}>
 
             {/* ── Vinyl record ──────────────────────── */}
             <div className="player-vinyl-outer">
@@ -427,7 +457,7 @@ export const MusicPlayer: React.FC = () => {
             </div>
 
             {/* ── Volume ────────────────────────────── */}
-            <div
+            {showFsVolume && <div
               className="flex items-center gap-3"
               style={{ opacity: fsVisible ? 1 : 0, transition: 'opacity 0.22s ease 0.13s' }}
               onWheel={handleVolumeWheel}
@@ -447,7 +477,7 @@ export const MusicPlayer: React.FC = () => {
                 onChange={setVolume}
                 className="w-32"
               />
-            </div>
+            </div>}
 
           </div>
         </div>
