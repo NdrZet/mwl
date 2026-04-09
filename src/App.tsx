@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Toaster } from './components/ui/sonner';
 import { MusicProvider } from './components/MusicContext';
 import { MusicPlayer } from './components/MusicPlayer';
@@ -31,23 +31,21 @@ type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | '
 type NavItem = { id: View; label: string; icon: LucideIcon };
 
 const NAV_PRIMARY: NavItem[] = [
-    { id: 'home',    label: 'Home',         icon: Home     },
-    { id: 'search',  label: 'Search',       icon: Search   },
-    { id: 'library', label: 'Your Library', icon: Library  },
+    { id: 'home',    label: 'Home',         icon: Home    },
+    { id: 'search',  label: 'Search',       icon: Search  },
+    { id: 'library', label: 'Your Library', icon: Library },
 ];
-
 const NAV_COLLECTION: NavItem[] = [
-    { id: 'liked',     label: 'Liked Songs', icon: Heart    },
-    { id: 'playlists', label: 'Playlists',   icon: ListMusic},
-    { id: 'albums',    label: 'Albums',      icon: Music    },
+    { id: 'liked',     label: 'Liked Songs', icon: Heart     },
+    { id: 'playlists', label: 'Playlists',   icon: ListMusic },
+    { id: 'albums',    label: 'Albums',      icon: Music     },
 ];
-
 const NAV_DISCOVER: NavItem[] = [
     { id: 'radio',    label: 'Radio',    icon: RadioIcon },
     { id: 'podcasts', label: 'Podcasts', icon: Mic2      },
 ];
 
-// ── Sidebar item component ─────────────────────────────────────────────────
+// ── Sidebar item ───────────────────────────────────────────────────────────
 const SidebarItem = ({
     item,
     active,
@@ -59,78 +57,53 @@ const SidebarItem = ({
 }) => {
     const Icon = item.icon;
     return (
-        <button
-            className={`vl-sidebar-item${active ? ' is-active' : ''}`}
-            onClick={onClick}
-        >
+        <button className={`vl-sidebar-item${active ? ' is-active' : ''}`} onClick={onClick}>
             <Icon />
             <span>{item.label}</span>
         </button>
     );
 };
 
-// ── Main layout ─────────────────────────────────────────────────────────────
-const MainLayout = ({ onUpload: _onUpload }: { onUpload: () => void }) => {
-    const [currentView, setCurrentView]       = useState<View>('home');
-    const [openedPodcastId, setOpenedPodcastId] = useState<string | null>(null);
-    const [transitioning, setTransitioning]   = useState(false);
-    const transitionTimeoutRef = useRef<number | null>(null);
+// ── Main layout (pure presenter: получает navigate/currentView сверху) ─────
+interface MainLayoutProps {
+    currentView: View;
+    navigate: (v: View) => void;
+    openedPodcastId: string | null;
+    setOpenedPodcastId: (id: string | null) => void;
+    transitioning: boolean;
+    onAnimationEnd: (e: React.AnimationEvent<HTMLDivElement>) => void;
+}
 
-    // ── Navigate ───────────────────────────────────────────────────────────
-    const navigate = (next: View) => {
-        if (next === currentView) return;
-        setCurrentView(next);
-        setTransitioning(true);
-        if (transitionTimeoutRef.current) {
-            window.clearTimeout(transitionTimeoutRef.current);
-        }
-        transitionTimeoutRef.current = window.setTimeout(() => {
-            setTransitioning(false);
-            transitionTimeoutRef.current = null;
-        }, 420);
-    };
+const MainLayout: React.FC<MainLayoutProps> = ({
+    currentView,
+    navigate,
+    openedPodcastId,
+    setOpenedPodcastId,
+    transitioning,
+    onAnimationEnd,
+}) => {
 
-    const handleEnterAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
-        if (e.target !== e.currentTarget) return;
-        setTransitioning(false);
-        if (transitionTimeoutRef.current) {
-            window.clearTimeout(transitionTimeoutRef.current);
-            transitionTimeoutRef.current = null;
-        }
-    };
-
-    // ── Render view ────────────────────────────────────────────────────────
     const renderView = (view: View) => {
         switch (view) {
             case 'home':
                 return (
                     <div className="space-y-8">
-                        {/* Quick access */}
                         <div>
                             <p className="vl-section-title">Quick access</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                <button
-                                    className="vl-quick-card card-tap-out-trigger"
-                                    onClick={() => navigate('liked')}
-                                >
-                                    <div className="vl-quick-card-icon" style={{ background: 'linear-gradient(135deg, #32B8C6, #1A6873)' }}>
+                                <button className="vl-quick-card" onClick={() => navigate('liked')}>
+                                    <div className="vl-quick-card-icon" style={{ background: 'linear-gradient(135deg,#32B8C6,#1A6873)' }}>
                                         <Heart className="h-5 w-5 text-white" />
                                     </div>
                                     <span className="vl-quick-card-label">Liked Songs</span>
                                 </button>
-                                <button
-                                    className="vl-quick-card"
-                                    onClick={() => navigate('playlists')}
-                                >
+                                <button className="vl-quick-card" onClick={() => navigate('playlists')}>
                                     <div className="vl-quick-card-icon" style={{ background: 'rgba(255,255,255,0.07)' }}>
                                         <ListMusic className="h-5 w-5" style={{ color: 'rgba(255,255,255,0.6)' }} />
                                     </div>
                                     <span className="vl-quick-card-label">Playlists</span>
                                 </button>
-                                <button
-                                    className="vl-quick-card"
-                                    onClick={() => navigate('library')}
-                                >
+                                <button className="vl-quick-card" onClick={() => navigate('library')}>
                                     <div className="vl-quick-card-icon" style={{ background: 'rgba(255,255,255,0.07)' }}>
                                         <Music className="h-5 w-5" style={{ color: 'rgba(255,255,255,0.6)' }} />
                                     </div>
@@ -139,14 +112,13 @@ const MainLayout = ({ onUpload: _onUpload }: { onUpload: () => void }) => {
                             </div>
                         </div>
 
-                        {/* Albums */}
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <p className="vl-section-title">Albums</p>
                                 <button
-                                    className="vl-header-btn vl-header-btn--secondary text-xs px-3 py-1.5"
-                                    onClick={() => navigate('albums')}
+                                    className="vl-header-btn vl-header-btn--secondary"
                                     style={{ fontSize: '12px', padding: '5px 12px' }}
+                                    onClick={() => navigate('albums')}
                                 >
                                     See all
                                 </button>
@@ -154,7 +126,6 @@ const MainLayout = ({ onUpload: _onUpload }: { onUpload: () => void }) => {
                             <AlbumsGrid mode="recent" limit={4} />
                         </div>
 
-                        {/* Recently played */}
                         <div>
                             <div className="flex items-center gap-2 mb-3">
                                 <Clock className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.35)' }} />
@@ -255,13 +226,13 @@ const MainLayout = ({ onUpload: _onUpload }: { onUpload: () => void }) => {
                         <div className="flex items-center gap-5 pb-4">
                             <div
                                 className="w-40 h-40 rounded-xl flex items-center justify-center flex-shrink-0"
-                                style={{ background: 'linear-gradient(135deg, #32B8C6, #1A6873)', boxShadow: '0 8px 32px rgba(50,184,198,0.30)' }}
+                                style={{ background: 'linear-gradient(135deg,#32B8C6,#1A6873)', boxShadow: '0 8px 32px rgba(50,184,198,0.30)' }}
                             >
                                 <Heart className="h-16 w-16 text-white" strokeWidth={1.5} />
                             </div>
                             <div>
                                 <p className="vl-view-subtitle" style={{ marginBottom: '6px' }}>Playlist</p>
-                                <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.04em', background: 'linear-gradient(135deg, #A8EFEF 0%, #7DDDE8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                                <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.04em', background: 'linear-gradient(135deg,#A8EFEF 0%,#7DDDE8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                                     Liked Songs
                                 </h1>
                                 <p className="vl-view-subtitle">Your favorite tracks</p>
@@ -278,69 +249,46 @@ const MainLayout = ({ onUpload: _onUpload }: { onUpload: () => void }) => {
 
     return (
         <div className="flex flex-1 overflow-hidden">
-
-            {/* ── Sidebar ──────────────────────────────────────────────────── */}
+            {/* ── Sidebar ─────────────────────────────────────────────────── */}
             <aside className="vl-sidebar">
-                {/* Primary nav */}
                 <nav>
                     {NAV_PRIMARY.map(item => (
-                        <SidebarItem
-                            key={item.id}
-                            item={item}
-                            active={currentView === item.id}
-                            onClick={() => navigate(item.id)}
-                        />
+                        <SidebarItem key={item.id} item={item} active={currentView === item.id} onClick={() => navigate(item.id)} />
                     ))}
                 </nav>
 
                 <div className="vl-sidebar-divider" />
-
                 <span className="vl-section-label">Collection</span>
                 <nav>
                     {NAV_COLLECTION.map(item => (
-                        <SidebarItem
-                            key={item.id}
-                            item={item}
-                            active={currentView === item.id}
-                            onClick={() => navigate(item.id)}
-                        />
+                        <SidebarItem key={item.id} item={item} active={currentView === item.id} onClick={() => navigate(item.id)} />
                     ))}
                 </nav>
 
                 <div className="vl-sidebar-divider" />
-
                 <span className="vl-section-label">Discover</span>
                 <nav>
                     {NAV_DISCOVER.map(item => (
-                        <SidebarItem
-                            key={item.id}
-                            item={item}
-                            active={currentView === item.id}
-                            onClick={() => navigate(item.id)}
-                        />
+                        <SidebarItem key={item.id} item={item} active={currentView === item.id} onClick={() => navigate(item.id)} />
                     ))}
                 </nav>
 
-                {/* Footer */}
                 <div className="vl-sidebar-footer">
                     <SidebarItem
                         item={{ id: 'upload', label: 'Upload Music', icon: Upload }}
                         active={currentView === 'upload'}
                         onClick={() => navigate('upload')}
                     />
-                    <span className="vl-sidebar-version">Z Music v2.0</span>
+                    <span className="vl-sidebar-version">Z Music v3.0</span>
                 </div>
             </aside>
 
-            {/* ── Main content ─────────────────────────────────────────────── */}
+            {/* ── Content ─────────────────────────────────────────────────── */}
             <ScrollArea className="flex-1">
-                <div
-                    className="relative overflow-hidden contain-paint"
-                    style={{ padding: '36px 44px' }}
-                >
+                <div className="relative overflow-hidden contain-paint" style={{ padding: '36px 44px' }}>
                     <div
                         className={`relative will-change-transform ${transitioning ? 'elevate-in-up' : ''}`}
-                        onAnimationEnd={handleEnterAnimationEnd}
+                        onAnimationEnd={onAnimationEnd}
                     >
                         {renderView(currentView)}
                     </div>
@@ -350,9 +298,32 @@ const MainLayout = ({ onUpload: _onUpload }: { onUpload: () => void }) => {
     );
 };
 
-// ── App root ─────────────────────────────────────────────────────────────────
+// ── App root ──────────────────────────────────────────────────────────────
 export default function App() {
-    const [searchQuery, setSearchQuery] = useState('');
+    const [currentView, setCurrentView]             = useState<View>('home');
+    const [openedPodcastId, setOpenedPodcastId]     = useState<string | null>(null);
+    const [transitioning, setTransitioning]         = useState(false);
+    const transitionTimeoutRef                      = useRef<number | null>(null);
+
+    const navigate = (next: View) => {
+        if (next === currentView) return;
+        setCurrentView(next);
+        setTransitioning(true);
+        if (transitionTimeoutRef.current) window.clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = window.setTimeout(() => {
+            setTransitioning(false);
+            transitionTimeoutRef.current = null;
+        }, 420);
+    };
+
+    const handleEnterAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+        if (e.target !== e.currentTarget) return;
+        setTransitioning(false);
+        if (transitionTimeoutRef.current) {
+            window.clearTimeout(transitionTimeoutRef.current);
+            transitionTimeoutRef.current = null;
+        }
+    };
 
     return (
         <MusicProvider>
@@ -367,40 +338,18 @@ export default function App() {
                     ].join(', '),
                 }}
             >
-                {/* ── VL-style header (traffic lights + logo + search + actions) */}
-                <div
-                    className="vl-header"
-                    style={{ WebkitAppRegion: 'drag' as any }}
-                >
-                    {/* Traffic lights (Titlebar) — inlined here */}
-                    <div
-                        className="flex items-center gap-[7px] flex-shrink-0"
-                        style={{ WebkitAppRegion: 'no-drag' as any }}
-                    >
-                        <button
-                            aria-label="Minimize"
-                            onClick={() => (window as any).electronAPI?.minimizeWindow?.()}
-                            className="h-3.5 w-3.5 rounded-full bg-[#28c840] hover:ring-2 hover:ring-[#28c840]/40 transition-shadow"
-                        />
-                        <button
-                            aria-label="Toggle maximize"
-                            onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()}
-                            className="h-3.5 w-3.5 rounded-full bg-[#ffbd2e] hover:ring-2 hover:ring-[#ffbd2e]/40 transition-shadow"
-                        />
-                        <button
-                            aria-label="Close"
-                            onClick={() => (window as any).electronAPI?.closeWindow?.()}
-                            className="h-3.5 w-3.5 rounded-full bg-[#ff5f57] hover:ring-2 hover:ring-[#ff5f57]/40 transition-shadow"
-                        />
+                {/* ── Header ──────────────────────────────────────────────── */}
+                <div className="vl-header" style={{ WebkitAppRegion: 'drag' as any }}>
+                    {/* Traffic lights */}
+                    <div className="flex items-center gap-[7px] flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
+                        <button aria-label="Minimize"        onClick={() => (window as any).electronAPI?.minimizeWindow?.()}       className="h-3.5 w-3.5 rounded-full bg-[#28c840] hover:ring-2 hover:ring-[#28c840]/40 transition-shadow" />
+                        <button aria-label="Toggle maximize" onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()} className="h-3.5 w-3.5 rounded-full bg-[#ffbd2e] hover:ring-2 hover:ring-[#ffbd2e]/40 transition-shadow" />
+                        <button aria-label="Close"           onClick={() => (window as any).electronAPI?.closeWindow?.()}          className="h-3.5 w-3.5 rounded-full bg-[#ff5f57] hover:ring-2 hover:ring-[#ff5f57]/40 transition-shadow" />
                     </div>
 
                     {/* Logo */}
-                    <div
-                        className="flex items-center gap-3 flex-shrink-0"
-                        style={{ WebkitAppRegion: 'no-drag' as any }}
-                    >
+                    <div className="flex items-center gap-3 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
                         <div className="vl-logo-icon-wrap">
-                            {/* Music note icon */}
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M9 18V5l12-2v13" />
                                 <circle cx="6" cy="18" r="3" />
@@ -410,44 +359,42 @@ export default function App() {
                         <span className="vl-logo-text">Z Music</span>
                     </div>
 
-                    {/* Search bar */}
-                    <div className="vl-search">
-                        <svg className="vl-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-                        <input
-                            type="text"
-                            className="vl-search-input"
-                            placeholder="Search your library..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            autoComplete="off"
-                            spellCheck={false}
-                        />
-                    </div>
-
-                    {/* Action buttons */}
-                    <div
-                        className="flex items-center gap-2 ml-auto flex-shrink-0"
-                        style={{ WebkitAppRegion: 'no-drag' as any }}
+                    {/* Search — кнопка-переход, текст вводится внутри страницы Search */}
+                    <button
+                        className="vl-search"
+                        style={{ cursor: 'text' }}
+                        onClick={() => navigate('search')}
                     >
-                        <button
-                            className="vl-header-btn vl-header-btn--primary"
-                            onClick={() => {}}
-                        >
+                        <svg className="vl-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <span className="vl-search-input" style={{ pointerEvents: 'none' }}>
+                            {currentView === 'search' ? 'Searching…' : 'Search your library...'}
+                        </span>
+                    </button>
+
+                    {/* Add Music — теперь реально работает */}
+                    <div className="flex items-center gap-2 ml-auto flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
+                        <button className="vl-header-btn vl-header-btn--primary" onClick={() => navigate('upload')}>
                             <Plus />
                             <span>Add Music</span>
                         </button>
                     </div>
                 </div>
 
-                {/* ── Body: sidebar + content ──────────────────────────────── */}
+                {/* ── Body ────────────────────────────────────────────────── */}
                 <div className="flex-1 flex overflow-hidden">
-                    <MainLayout onUpload={() => {}} />
+                    <MainLayout
+                        currentView={currentView}
+                        navigate={navigate}
+                        openedPodcastId={openedPodcastId}
+                        setOpenedPodcastId={setOpenedPodcastId}
+                        transitioning={transitioning}
+                        onAnimationEnd={handleEnterAnimationEnd}
+                    />
                 </div>
 
-                {/* ── Player bar ───────────────────────────────────────────── */}
+                {/* ── Player ──────────────────────────────────────────────── */}
                 <div className="flex-shrink-0">
                     <MusicPlayer />
                 </div>

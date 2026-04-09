@@ -65,9 +65,7 @@ export const TrackList: React.FC<TrackListProps> = ({
   }, []);
 
   useEffect(() => {
-    const root = document.getElementById('root');
-    const dark = root?.querySelector('.dark') as HTMLElement | null;
-    setPortalEl(dark || root || document.body);
+    setPortalEl(document.body);
   }, []);
 
   const computeMenuPosition = (rect: DOMRect) => {

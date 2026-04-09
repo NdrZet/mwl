@@ -22,7 +22,7 @@ import {
   AlertDialogTrigger,
 } from './ui/alert-dialog';
 import { TrackList } from './TrackList';
-import { useMusicContext } from './MusicContext';
+import { useMusicContext, type Track } from './MusicContext';
 
 export const PlaylistManager: React.FC = () => {
   const {
@@ -51,8 +51,8 @@ export const PlaylistManager: React.FC = () => {
     if (playlist && playlist.tracks.length > 0) {
       const playlistTracks = playlist.tracks
         .map(trackId => tracks.find(t => t.id === trackId))
-        .filter(track => track !== undefined);
-      
+        .filter((track): track is Track => track !== undefined);
+
       if (playlistTracks.length > 0) {
         setQueue(playlistTracks);
         play(playlistTracks[0]);
@@ -65,21 +65,20 @@ export const PlaylistManager: React.FC = () => {
     return playlist ? playlist.tracks.length : 0;
   };
 
-  const getPlaylistTracks = (playlistId: string) => {
+  const getPlaylistTracks = (playlistId: string): Track[] => {
     const playlist = playlists.find(p => p.id === playlistId);
     if (!playlist) return [];
-    
+
     return playlist.tracks
       .map(trackId => tracks.find(t => t.id === trackId))
-      .filter(track => track !== undefined);
+      .filter((track): track is Track => track !== undefined);
   };
 
   const selectedPlaylistData = selectedPlaylist ? playlists.find(p => p.id === selectedPlaylist) : null;
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-crisp">Your Playlists</h1>
+      <div className="flex items-center justify-end">
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
@@ -221,7 +220,7 @@ export const PlaylistManager: React.FC = () => {
               <div>
                 <h2>{selectedPlaylistData?.name}</h2>
                 <p className="text-muted-foreground text-sm">
-                  {getPlaylistTrackCount(selectedPlaylist!)} songs
+                  {selectedPlaylist ? getPlaylistTrackCount(selectedPlaylist) : 0} songs
                 </p>
               </div>
             </DialogTitle>

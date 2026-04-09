@@ -22,10 +22,12 @@ export const AlbumsGrid: React.FC<AlbumsGridProps> = ({ mode = 'recent', limit =
   const [openedAlbum, setOpenedAlbum] = useState<AlbumInfo | null>(null);
 
   const albums = useMemo<AlbumInfo[]>(() => {
+    // Ключ нормализован по нижнему регистру — «Pop» и «pop» попадают в одну группу
     const map = new Map<string, AlbumInfo>();
     for (const t of tracks) {
-      const key = (t.album || 'Unknown Album').trim();
-      const current = map.get(key) || { name: key, artist: t.artist || 'Unknown Artist', cover: t.cover || null, tracks: [] };
+      const rawName = (t.album || 'Unknown Album').trim();
+      const key     = rawName.toLowerCase();
+      const current = map.get(key) || { name: rawName, artist: t.artist || 'Unknown Artist', cover: t.cover || null, tracks: [] };
       current.tracks.push(t);
       if (!current.cover && t.cover) current.cover = t.cover;
       if (current.artist === 'Unknown Artist' && t.artist) current.artist = t.artist;
@@ -35,8 +37,9 @@ export const AlbumsGrid: React.FC<AlbumsGridProps> = ({ mode = 'recent', limit =
     if (mode === 'recent') {
       list = list
         .sort((a, b) => {
-          const aTs = Math.max(...a.tracks.map(tt => (tt as any).lastPlayedAt || 0));
-          const bTs = Math.max(...b.tracks.map(tt => (tt as any).lastPlayedAt || 0));
+          // lastPlayedAt уже типизирован в Track как number | undefined
+          const aTs = Math.max(...a.tracks.map(tt => tt.lastPlayedAt ?? 0));
+          const bTs = Math.max(...b.tracks.map(tt => tt.lastPlayedAt ?? 0));
           return bTs - aTs;
         })
         .slice(0, limit);
@@ -52,7 +55,7 @@ export const AlbumsGrid: React.FC<AlbumsGridProps> = ({ mode = 'recent', limit =
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
         {albums.map((album) => (
-          <Card key={album.name} className="bg-card/50 hover:bg-card transition-colors cursor-pointer border-0" onClick={() => setOpenedAlbum(album)}>
+          <Card key={`${album.name}::${album.artist}`} className="bg-card/50 hover:bg-card transition-colors cursor-pointer border-0" onClick={() => setOpenedAlbum(album)}>
             <CardContent className="p-4">
               <div className="aspect-square rounded-lg overflow-hidden relative bg-muted">
                 {album.cover ? (

@@ -107,10 +107,8 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // чтобы при пакетной загрузке не возникало одинаковых id
   const generateTrackId = (): string => {
     try {
-      // @ts-ignore
-      if (typeof crypto !== 'undefined' && crypto?.randomUUID) {
-        // @ts-ignore
-        return crypto.randomUUID();
+      if (typeof crypto !== 'undefined' && (crypto as any).randomUUID) {
+        return (crypto as any).randomUUID() as string;
       }
     } catch {}
     return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -269,22 +267,28 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('musicApp_playlists', JSON.stringify(playlists));
   }, [playlists]);
 
+  // Ref на актуальную функцию next — placeholder, обновляется sync-эффектом после каждого рендера.
+  // Инициализируем no-op чтобы избежать TDZ: `next` объявлен ниже по телу компонента.
+  const nextRef = useRef<() => void>(() => {});
+  useEffect(() => { nextRef.current = next; });
+
+  // Регистрируем слушатели аудио один раз — через ref всегда вызывается актуальный next
   useEffect(() => {
     const audio = audioRef.current;
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleTimeUpdate    = () => setCurrentTime(audio.currentTime);
     const handleDurationChange = () => setDuration(audio.duration);
-    const handleEnded = () => next();
+    const handleEnded          = () => nextRef.current();
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('timeupdate',     handleTimeUpdate);
     audio.addEventListener('durationchange', handleDurationChange);
-    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('ended',          handleEnded);
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('timeupdate',     handleTimeUpdate);
       audio.removeEventListener('durationchange', handleDurationChange);
-      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('ended',          handleEnded);
     };
-  }, [queue, currentQueueIndex]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // убрали расширенное логирование
 
