@@ -14,47 +14,75 @@ import {
     Search,
     Heart,
     Plus,
-    Radio as RadioIcon
+    Radio as RadioIcon,
+    Clock,
+    Mic2,
+    type LucideIcon,
 } from 'lucide-react';
-import { Button } from './components/ui/button';
 import { ScrollArea } from './components/ui/scroll-area';
-import { Separator } from './components/ui/separator';
 import { AlbumsGrid } from './components/AlbumsGrid';
 import { Podcasts } from './components/Podcasts';
-import { Titlebar } from './components/Titlebar';
 import { PodcastDetail } from './components/PodcastDetail';
 import { RadioPage } from './components/RadioPage';
 
 type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'podcasts' | 'podcastDetail' | 'radio';
 
-// Мы вынесли всю основную часть в отдельный компонент для чистоты верстки
-const MainLayout = () => {
-    const [currentView, setCurrentView] = useState<View>('home');
+// ── Sidebar navigation definition ─────────────────────────────────────────
+type NavItem = { id: View; label: string; icon: LucideIcon };
+
+const NAV_PRIMARY: NavItem[] = [
+    { id: 'home',    label: 'Home',         icon: Home     },
+    { id: 'search',  label: 'Search',       icon: Search   },
+    { id: 'library', label: 'Your Library', icon: Library  },
+];
+
+const NAV_COLLECTION: NavItem[] = [
+    { id: 'liked',     label: 'Liked Songs', icon: Heart    },
+    { id: 'playlists', label: 'Playlists',   icon: ListMusic},
+    { id: 'albums',    label: 'Albums',      icon: Music    },
+];
+
+const NAV_DISCOVER: NavItem[] = [
+    { id: 'radio',    label: 'Radio',    icon: RadioIcon },
+    { id: 'podcasts', label: 'Podcasts', icon: Mic2      },
+];
+
+// ── Sidebar item component ─────────────────────────────────────────────────
+const SidebarItem = ({
+    item,
+    active,
+    onClick,
+}: {
+    item: NavItem;
+    active: boolean;
+    onClick: () => void;
+}) => {
+    const Icon = item.icon;
+    return (
+        <button
+            className={`vl-sidebar-item${active ? ' is-active' : ''}`}
+            onClick={onClick}
+        >
+            <Icon />
+            <span>{item.label}</span>
+        </button>
+    );
+};
+
+// ── Main layout ─────────────────────────────────────────────────────────────
+const MainLayout = ({ onUpload: _onUpload }: { onUpload: () => void }) => {
+    const [currentView, setCurrentView]       = useState<View>('home');
     const [openedPodcastId, setOpenedPodcastId] = useState<string | null>(null);
-    const [prevView, setPrevView] = useState<View | null>(null);
-    const [transitioning, setTransitioning] = useState(false);
-    const [direction, setDirection] = useState<'left' | 'right'>('right');
+    const [transitioning, setTransitioning]   = useState(false);
     const transitionTimeoutRef = useRef<number | null>(null);
 
-    const sidebarItems = [
-        { id: 'home' as View, label: 'Home', icon: Home },
-        { id: 'search' as View, label: 'Search', icon: Search },
-        { id: 'library' as View, label: 'Your Library', icon: Library },
-    ];
-
-    const viewsOrder: View[] = ['home', 'search', 'library', 'playlists', 'albums', 'podcasts', 'radio', 'upload', 'liked', 'podcastDetail'];
-
+    // ── Navigate ───────────────────────────────────────────────────────────
     const navigate = (next: View) => {
         if (next === currentView) return;
-        const currIdx = Math.max(0, viewsOrder.indexOf(currentView));
-        const nextIdx = Math.max(0, viewsOrder.indexOf(next));
-        setDirection(nextIdx > currIdx ? 'right' : 'left');
-        setPrevView(currentView);
         setCurrentView(next);
         setTransitioning(true);
         if (transitionTimeoutRef.current) {
             window.clearTimeout(transitionTimeoutRef.current);
-            transitionTimeoutRef.current = null;
         }
         transitionTimeoutRef.current = window.setTimeout(() => {
             setTransitioning(false);
@@ -62,21 +90,8 @@ const MainLayout = () => {
         }, 420);
     };
 
-    const handleCardNavigate = (view: View, e: React.MouseEvent<HTMLButtonElement>) => {
-        try {
-            const el = e.currentTarget;
-            el.classList.add('card-tap-out');
-            window.setTimeout(() => {
-                el.classList.remove('card-tap-out');
-                navigate(view);
-            }, 120);
-        } catch {
-            navigate(view);
-        }
-    };
-
     const handleEnterAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
-        if (e.target !== e.currentTarget) return; // игнорируем дочерние анимации
+        if (e.target !== e.currentTarget) return;
         setTransitioning(false);
         if (transitionTimeoutRef.current) {
             window.clearTimeout(transitionTimeoutRef.current);
@@ -84,136 +99,178 @@ const MainLayout = () => {
         }
     };
 
+    // ── Render view ────────────────────────────────────────────────────────
     const renderView = (view: View) => {
         switch (view) {
             case 'home':
                 return (
                     <div className="space-y-8">
+                        {/* Quick access */}
                         <div>
-                            <h1 className="text-3xl font-bold mb-6">Good evening</h1>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <Button
-                                    variant="ghost"
-                                    className="h-20 justify-start bg-gradient-to-br from-purple-700 to-purple-900 hover:from-purple-600 hover:to-purple-800 text-white transform-gpu transition-transform duration-150 hover:scale-[1.01] active:scale-[0.98]"
-                                    onClick={(e) => handleCardNavigate('liked', e)}
+                            <p className="vl-section-title">Quick access</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <button
+                                    className="vl-quick-card card-tap-out-trigger"
+                                    onClick={() => navigate('liked')}
                                 >
-                                    <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-400 to-white mr-4 flex items-center justify-center">
-                                        <Heart className="h-6 w-6 text-purple-600" />
+                                    <div className="vl-quick-card-icon" style={{ background: 'linear-gradient(135deg, #32B8C6, #1A6873)' }}>
+                                        <Heart className="h-5 w-5 text-white" />
                                     </div>
-                                    <span>Liked Songs</span>
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    className="h-20 justify-start bg-card hover:bg-accent transform-gpu transition-transform duration-150 hover:scale-[1.01] active:scale-[0.98]"
-                                    onClick={(e) => handleCardNavigate('playlists', e)}
+                                    <span className="vl-quick-card-label">Liked Songs</span>
+                                </button>
+                                <button
+                                    className="vl-quick-card"
+                                    onClick={() => navigate('playlists')}
                                 >
-                                    <div className="w-12 h-12 rounded bg-muted mr-4 flex items-center justify-center">
-                                        <ListMusic className="h-6 w-6" />
+                                    <div className="vl-quick-card-icon" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                                        <ListMusic className="h-5 w-5" style={{ color: 'rgba(255,255,255,0.6)' }} />
                                     </div>
-                                    <span>Your Playlists</span>
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    className="h-20 justify-start bg-card hover:bg-accent transform-gpu transition-transform duration-150 hover:scale-[1.01] active:scale-[0.98]"
-                                    onClick={(e) => handleCardNavigate('library', e)}
+                                    <span className="vl-quick-card-label">Playlists</span>
+                                </button>
+                                <button
+                                    className="vl-quick-card"
+                                    onClick={() => navigate('library')}
                                 >
-                                    <div className="w-12 h-12 rounded bg-muted mr-4 flex items-center justify-center">
-                                        <Music className="h-6 w-6" />
+                                    <div className="vl-quick-card-icon" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                                        <Music className="h-5 w-5" style={{ color: 'rgba(255,255,255,0.6)' }} />
                                     </div>
-                                    <span>Your Music</span>
-                                </Button>
+                                    <span className="vl-quick-card-label">Your Music</span>
+                                </button>
                             </div>
                         </div>
 
+                        {/* Albums */}
                         <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-2xl font-bold">Albums</h2>
-                                <Button size="sm" variant="ghost" onClick={() => navigate('albums')}>All</Button>
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="vl-section-title">Albums</p>
+                                <button
+                                    className="vl-header-btn vl-header-btn--secondary text-xs px-3 py-1.5"
+                                    onClick={() => navigate('albums')}
+                                    style={{ fontSize: '12px', padding: '5px 12px' }}
+                                >
+                                    See all
+                                </button>
                             </div>
                             <AlbumsGrid mode="recent" limit={4} />
                         </div>
+
+                        {/* Recently played */}
                         <div>
-                            <h2 className="text-2xl font-bold mb-4">Recently Played</h2>
+                            <div className="flex items-center gap-2 mb-3">
+                                <Clock className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.35)' }} />
+                                <p className="vl-section-title" style={{ marginBottom: 0 }}>Recently Played</p>
+                            </div>
                             <TrackList showSearch={false} />
                         </div>
                     </div>
                 );
+
             case 'search':
                 return (
-                    <div className="space-y-6">
-                        <h1 className="text-3xl font-bold">Search</h1>
-                        <TrackList />
-                    </div>
-                );
-            case 'library':
-                return (
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-3xl font-bold text-crisp">Your Library</h1>
-                            <Button
-                                size="sm"
-                                onClick={() => setCurrentView('upload')}
-                                className="bg-primary hover:bg-primary/90"
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Music
-                            </Button>
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Search</h1>
+                            <p className="vl-view-subtitle">Find your music</p>
                         </div>
                         <TrackList />
                     </div>
                 );
+
+            case 'library':
+                return (
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Your Library</h1>
+                            <p className="vl-view-subtitle">All your music in one place</p>
+                        </div>
+                        <TrackList />
+                    </div>
+                );
+
             case 'playlists':
-                return <PlaylistManager />;
+                return (
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Playlists</h1>
+                            <p className="vl-view-subtitle">Your curated collections</p>
+                        </div>
+                        <PlaylistManager />
+                    </div>
+                );
+
             case 'albums':
                 return (
-                    <div className="space-y-6">
-                        <h1 className="text-3xl font-bold text-crisp">Albums</h1>
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Albums</h1>
+                            <p className="vl-view-subtitle">Browse your collection</p>
+                        </div>
                         <AlbumsGrid mode="all" />
                     </div>
                 );
+
             case 'radio':
                 return (
-                    <div className="space-y-6">
-                        <h1 className="text-3xl font-bold text-crisp">Radio</h1>
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Radio</h1>
+                            <p className="vl-view-subtitle">Live stations from around the world</p>
+                        </div>
                         <RadioPage />
                     </div>
                 );
+
             case 'podcasts':
                 return (
-                    <div className="space-y-6">
-                        <h1 className="text-3xl font-bold text-crisp">Podcasts</h1>
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Podcasts</h1>
+                            <p className="vl-view-subtitle">Discover and follow shows</p>
+                        </div>
                         <Podcasts openPodcast={(id) => { setOpenedPodcastId(id); navigate('podcastDetail'); }} />
                     </div>
                 );
+
             case 'podcastDetail':
                 return (
-                    <div className="space-y-6">
+                    <div className="space-y-5">
                         <PodcastDetail podcastId={openedPodcastId} onBack={() => navigate('podcasts')} />
                     </div>
                 );
+
             case 'upload':
                 return (
-                    <div className="space-y-6">
-                        <h1 className="text-3xl font-bold text-crisp">Add Music</h1>
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Add Music</h1>
+                            <p className="vl-view-subtitle">Import files to your library</p>
+                        </div>
                         <FileUpload />
                     </div>
                 );
+
             case 'liked':
                 return (
-                    <div className="space-y-6">
-                        <div className="flex items-center space-x-6 pb-6">
-                            <div className="w-60 h-60 rounded bg-gradient-to-br from-purple-400 to-purple-700 flex items-center justify-center">
-                                <Heart className="h-24 w-24 text-white" />
+                    <div className="space-y-5">
+                        <div className="flex items-center gap-5 pb-4">
+                            <div
+                                className="w-40 h-40 rounded-xl flex items-center justify-center flex-shrink-0"
+                                style={{ background: 'linear-gradient(135deg, #32B8C6, #1A6873)', boxShadow: '0 8px 32px rgba(50,184,198,0.30)' }}
+                            >
+                                <Heart className="h-16 w-16 text-white" strokeWidth={1.5} />
                             </div>
                             <div>
-                                <p className="text-sm text-muted-foreground mb-2">Playlist</p>
-                                <h1 className="text-5xl font-bold mb-4 text-crisp">Liked Songs</h1>
-                                <p className="text-muted-foreground">Your favorite tracks</p>
+                                <p className="vl-view-subtitle" style={{ marginBottom: '6px' }}>Playlist</p>
+                                <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.04em', background: 'linear-gradient(135deg, #A8EFEF 0%, #7DDDE8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                                    Liked Songs
+                                </h1>
+                                <p className="vl-view-subtitle">Your favorite tracks</p>
                             </div>
                         </div>
                         <TrackList showSearch={false} />
                     </div>
                 );
+
             default:
                 return <TrackList />;
         }
@@ -221,106 +278,70 @@ const MainLayout = () => {
 
     return (
         <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar */}
-            <div className="w-64 bg-sidebar flex-shrink-0 flex flex-col border-r border-sidebar-border">
-                <div className="p-6">
-                    <div className="flex items-center space-x-2">
-                        <span className="text-3xl font-extrabold text-primary leading-none select-none"> </span>
-                        <span className="text-xl font-bold text-sidebar-foreground">Z Music</span>
-                    </div>
-                </div>
-                <div className="px-3 mb-0">
-                    <nav className="space-y-1">
-                        {sidebarItems.map((item) => (
-                            <Button
-                                key={item.id}
-                                variant="ghost"
-                                className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
-                                    currentView === item.id ? 'text-sidebar-foreground bg-sidebar-accent' : ''
-                                }`}
-                                onClick={() => navigate(item.id)}
-                            >
-                                <item.icon className="mr-3 h-5 w-5" />
-                                {item.label}
-                            </Button>
-                        ))}
-                    </nav>
-                </div>
-                <div className="flex-1 px-3 pt-0 pb-6">
-                    <div className="space-y-1">
-                        <Button
-                            variant="ghost"
-                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
-                                currentView === 'playlists' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
-                            }`}
-                            onClick={() => navigate('playlists')}
-                        >
-                            <ListMusic className="mr-3 h-5 w-5" />
-                            Playlists
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
-                                currentView === 'liked' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
-                            }`}
-                            onClick={() => navigate('liked')}
-                        >
-                            <Heart className="mr-3 h-5 w-5" />
-                            Liked Songs
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
-                                currentView === 'albums' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
-                            }`}
-                            onClick={() => navigate('albums')}
-                        >
-                            <Library className="mr-3 h-5 w-5" />
-                            Albums
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
-                                currentView === 'radio' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
-                            }`}
-                            onClick={() => navigate('radio')}
-                        >
-                            <RadioIcon className="mr-3 h-5 w-5" />
-                            Radio
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
-                                currentView === 'podcasts' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
-                            }`}
-                            onClick={() => navigate('podcasts')}
-                        >
-                            <Library className="mr-3 h-5 w-5" />
-                            Podcasts
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            className={`w-full justify-start h-10 text-sidebar-accent-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-transform ${
-                                currentView === 'upload' ? 'text-sidebar-foreground bg-sidebar-accent' : ''
-                            }`}
-                            onClick={() => navigate('upload')}
-                        >
-                            <Upload className="mr-3 h-5 w-5" />
-                            Upload Music
-                        </Button>
-                    </div>
-                </div>
-            </div>
 
-            {/* --- ГЛАВНОЕ ИЗМЕНЕНИЕ --- */}
-            {/* Main Content */}
-            {/* Мы убрали лишний div и вернули ScrollArea сюда */}
+            {/* ── Sidebar ──────────────────────────────────────────────────── */}
+            <aside className="vl-sidebar">
+                {/* Primary nav */}
+                <nav>
+                    {NAV_PRIMARY.map(item => (
+                        <SidebarItem
+                            key={item.id}
+                            item={item}
+                            active={currentView === item.id}
+                            onClick={() => navigate(item.id)}
+                        />
+                    ))}
+                </nav>
+
+                <div className="vl-sidebar-divider" />
+
+                <span className="vl-section-label">Collection</span>
+                <nav>
+                    {NAV_COLLECTION.map(item => (
+                        <SidebarItem
+                            key={item.id}
+                            item={item}
+                            active={currentView === item.id}
+                            onClick={() => navigate(item.id)}
+                        />
+                    ))}
+                </nav>
+
+                <div className="vl-sidebar-divider" />
+
+                <span className="vl-section-label">Discover</span>
+                <nav>
+                    {NAV_DISCOVER.map(item => (
+                        <SidebarItem
+                            key={item.id}
+                            item={item}
+                            active={currentView === item.id}
+                            onClick={() => navigate(item.id)}
+                        />
+                    ))}
+                </nav>
+
+                {/* Footer */}
+                <div className="vl-sidebar-footer">
+                    <SidebarItem
+                        item={{ id: 'upload', label: 'Upload Music', icon: Upload }}
+                        active={currentView === 'upload'}
+                        onClick={() => navigate('upload')}
+                    />
+                    <span className="vl-sidebar-version">Z Music v2.0</span>
+                </div>
+            </aside>
+
+            {/* ── Main content ─────────────────────────────────────────────── */}
             <ScrollArea className="flex-1">
-                <div className="relative p-8 overflow-hidden contain-paint">
-                    {/* Предыдущий экран (анимация выхода) */}
-                    {/* Уходящий слой не анимируем – сразу убираем для производительности */}
-                    {/* Текущий экран (анимация входа) */}
-                    <div className={`relative will-change-transform ${transitioning ? 'elevate-in-up' : ''}`} onAnimationEnd={handleEnterAnimationEnd}>
+                <div
+                    className="relative overflow-hidden contain-paint"
+                    style={{ padding: '36px 44px' }}
+                >
+                    <div
+                        className={`relative will-change-transform ${transitioning ? 'elevate-in-up' : ''}`}
+                        onAnimationEnd={handleEnterAnimationEnd}
+                    >
                         {renderView(currentView)}
                     </div>
                 </div>
@@ -329,17 +350,104 @@ const MainLayout = () => {
     );
 };
 
+// ── App root ─────────────────────────────────────────────────────────────────
 export default function App() {
+    const [searchQuery, setSearchQuery] = useState('');
+
     return (
         <MusicProvider>
-            <div className="h-screen flex flex-col bg-background text-foreground dark app-fade-in">
-                <Titlebar />
-                {/* Этот div занимает все доступное место, КРОМЕ нижнего плеера */}
-                <div className="flex-1 flex overflow-hidden">
-                    <MainLayout />
+            <div
+                className="h-screen flex flex-col text-foreground dark app-fade-in"
+                style={{
+                    background: '#0A0D0D',
+                    backgroundImage: [
+                        'radial-gradient(ellipse 90% 65% at 10% -10%, rgba(33,128,141,0.22) 0%, transparent 58%)',
+                        'radial-gradient(ellipse 65% 55% at 92% 105%, rgba(26,104,115,0.16) 0%, transparent 55%)',
+                        'radial-gradient(ellipse 45% 35% at 60% 15%, rgba(50,184,198,0.07) 0%, transparent 50%)',
+                    ].join(', '),
+                }}
+            >
+                {/* ── VL-style header (traffic lights + logo + search + actions) */}
+                <div
+                    className="vl-header"
+                    style={{ WebkitAppRegion: 'drag' as any }}
+                >
+                    {/* Traffic lights (Titlebar) — inlined here */}
+                    <div
+                        className="flex items-center gap-[7px] flex-shrink-0"
+                        style={{ WebkitAppRegion: 'no-drag' as any }}
+                    >
+                        <button
+                            aria-label="Minimize"
+                            onClick={() => (window as any).electronAPI?.minimizeWindow?.()}
+                            className="h-3.5 w-3.5 rounded-full bg-[#28c840] hover:ring-2 hover:ring-[#28c840]/40 transition-shadow"
+                        />
+                        <button
+                            aria-label="Toggle maximize"
+                            onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()}
+                            className="h-3.5 w-3.5 rounded-full bg-[#ffbd2e] hover:ring-2 hover:ring-[#ffbd2e]/40 transition-shadow"
+                        />
+                        <button
+                            aria-label="Close"
+                            onClick={() => (window as any).electronAPI?.closeWindow?.()}
+                            className="h-3.5 w-3.5 rounded-full bg-[#ff5f57] hover:ring-2 hover:ring-[#ff5f57]/40 transition-shadow"
+                        />
+                    </div>
+
+                    {/* Logo */}
+                    <div
+                        className="flex items-center gap-3 flex-shrink-0"
+                        style={{ WebkitAppRegion: 'no-drag' as any }}
+                    >
+                        <div className="vl-logo-icon-wrap">
+                            {/* Music note icon */}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 18V5l12-2v13" />
+                                <circle cx="6" cy="18" r="3" />
+                                <circle cx="18" cy="16" r="3" />
+                            </svg>
+                        </div>
+                        <span className="vl-logo-text">Z Music</span>
+                    </div>
+
+                    {/* Search bar */}
+                    <div className="vl-search">
+                        <svg className="vl-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input
+                            type="text"
+                            className="vl-search-input"
+                            placeholder="Search your library..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            autoComplete="off"
+                            spellCheck={false}
+                        />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div
+                        className="flex items-center gap-2 ml-auto flex-shrink-0"
+                        style={{ WebkitAppRegion: 'no-drag' as any }}
+                    >
+                        <button
+                            className="vl-header-btn vl-header-btn--primary"
+                            onClick={() => {}}
+                        >
+                            <Plus />
+                            <span>Add Music</span>
+                        </button>
+                    </div>
                 </div>
 
-                {/* А этот div всегда будет зафиксирован внизу и никогда не скроется */}
+                {/* ── Body: sidebar + content ──────────────────────────────── */}
+                <div className="flex-1 flex overflow-hidden">
+                    <MainLayout onUpload={() => {}} />
+                </div>
+
+                {/* ── Player bar ───────────────────────────────────────────── */}
                 <div className="flex-shrink-0">
                     <MusicPlayer />
                 </div>

@@ -20,7 +20,7 @@ export const Titlebar: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-9 w-full flex items-center justify-between px-2 select-none bg-sidebar app-fade-in" style={{ WebkitAppRegion: 'drag' as any }}>
+    <div className="h-9 w-full flex items-center justify-between px-2 select-none bg-sidebar border-b border-sidebar-border app-fade-in" style={{ WebkitAppRegion: 'drag' as any }}>
       <div className="flex-1" />
       <div className="flex items-center space-x-2" style={{ WebkitAppRegion: 'no-drag' as any }}>
         <button

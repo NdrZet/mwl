@@ -5,92 +5,429 @@
 
 /* 2. Затем мы определяем все наши переменные и базовые стили внутри слоя @layer */
 @layer base {
-    /* Ваши переменные для светлой темы */
+    /* ─── Светлая тема — палитра Vision Lumina ─────────────────────────── */
     :root {
         --font-size: 14px;
-        --background: #f8f9fa;
-        --foreground: #212529;
-        --card: #ffffff;
-        --card-foreground: #212529;
-        --popover: #ffffff;
-        --popover-foreground: #212529;
-        --primary: #1db954;
-        --primary-foreground: #ffffff;
-        --secondary: #f1f3f4;
-        --secondary-foreground: #212529;
-        --muted: #f1f3f4;
-        --muted-foreground: #6c757d;
-        --accent: #e9ecef;
-        --accent-foreground: #212529;
-        --destructive: #dc3545;
-        --destructive-foreground: #ffffff;
-        --border: #dee2e6;
+
+        /* Backgrounds */
+        --background: #FCFCF9;          /* cream-50 */
+        --foreground: #13343B;          /* slate-900 */
+
+        /* Card / Surface */
+        --card: #FFFFFD;                /* cream-100 */
+        --card-foreground: #13343B;
+        --popover: #FFFFFD;
+        --popover-foreground: #13343B;
+
+        /* Primary — teal-500 */
+        --primary: #21808D;
+        --primary-foreground: #FCFCF9;
+
+        /* Secondary — warm brownish tint on cream */
+        --secondary: #EDE8E0;
+        --secondary-foreground: #13343B;
+
+        /* Muted */
+        --muted: #F0EBE3;
+        --muted-foreground: #626C71;    /* slate-500 */
+
+        /* Accent */
+        --accent: #EDE8E0;
+        --accent-foreground: #13343B;
+
+        /* Destructive */
+        --destructive: #C0152F;
+        --destructive-foreground: #FCFCF9;
+
+        /* Border / Input */
+        --border: #DDD8CF;
         --input: transparent;
-        --input-background: #ffffff;
-        --switch-background: #dee2e6;
-        --ring: #1db954;
-        --chart-1: #1db954;
-        --chart-2: #1ed760;
-        --chart-3: #1aa34a;
-        --chart-4: #168e3f;
-        --chart-5: #137a35;
+        --input-background: #FFFFFD;
+        --switch-background: #DDD8CF;
+        --ring: #21808D;
+
+        /* Charts — teal scale */
+        --chart-1: #21808D;
+        --chart-2: #2DA6B2;
+        --chart-3: #32B8C6;
+        --chart-4: #1D748E;
+        --chart-5: #1A6873;
+
+        /* Border radius */
         --radius: 8px;
-        --sidebar: #000000;
-        --sidebar-foreground: #ffffff;
-        --sidebar-primary: #1db954;
-        --sidebar-primary-foreground: #ffffff;
-        --sidebar-accent: #181818;
-        --sidebar-accent-foreground: #b3b3b3;
-        --sidebar-border: #282828;
-        --sidebar-ring: #1db954;
+
+        /* Sidebar — чуть темнее cream */
+        --sidebar: #F0EBE3;
+        --sidebar-foreground: #13343B;
+        --sidebar-primary: #21808D;
+        --sidebar-primary-foreground: #FCFCF9;
+        --sidebar-accent: #E5DFD5;
+        --sidebar-accent-foreground: #626C71;
+        --sidebar-border: #DDD8CF;
+        --sidebar-ring: #21808D;
     }
 
-    /* Ваши переменные для темной темы */
+    /* ─── Тёмная тема — палитра Vision Lumina ──────────────────────────── */
     .dark {
-        --background: #121212;
-        --foreground: #ffffff;
-        --card: #181818;
-        --card-foreground: #ffffff;
-        --popover: #282828;
-        --popover-foreground: #ffffff;
-        --primary: #1db954;
-        --primary-foreground: #ffffff;
-        --secondary: #282828;
-        --secondary-foreground: #ffffff;
-        --muted: #282828;
-        --muted-foreground: #b3b3b3;
-        --accent: #282828;
-        --accent-foreground: #ffffff;
-        --destructive: #e22134;
-        --destructive-foreground: #ffffff;
-        --border: #282828;
-        --input: #282828;
-        --ring: #1db954;
-        --chart-1: #1db954;
-        --chart-2: #1ed760;
-        --chart-3: #1aa34a;
-        --chart-4: #168e3f;
-        --chart-5: #137a35;
-        --sidebar: #000000;
-        --sidebar-foreground: #ffffff;
-        --sidebar-primary: #1db954;
-        --sidebar-primary-foreground: #ffffff;
-        --sidebar-accent: #181818;
-        --sidebar-accent-foreground: #b3b3b3;
-        --sidebar-border: #282828;
-        --sidebar-ring: #1db954;
+        /* Backgrounds */
+        --background: #1F2121;          /* charcoal-700 */
+        --foreground: #F5F5F5;          /* gray-200 */
+
+        /* Card / Surface */
+        --card: #262828;                /* charcoal-800 */
+        --card-foreground: #F5F5F5;
+        --popover: #2D2F2F;
+        --popover-foreground: #F5F5F5;
+
+        /* Primary — teal-300 */
+        --primary: #32B8C6;
+        --primary-foreground: #13343B;  /* slate-900 */
+
+        /* Secondary */
+        --secondary: #2D2F2F;
+        --secondary-foreground: #F5F5F5;
+
+        /* Muted */
+        --muted: #2D2F2F;
+        --muted-foreground: #A7A9A9;    /* gray-300 */
+
+        /* Accent */
+        --accent: #2D2F2F;
+        --accent-foreground: #F5F5F5;
+
+        /* Destructive */
+        --destructive: #FF5459;
+        --destructive-foreground: #F5F5F5;
+
+        /* Border / Input */
+        --border: #404545;
+        --input: #2D2F2F;
+        --ring: #32B8C6;
+
+        /* Charts — teal scale (dark) */
+        --chart-1: #32B8C6;
+        --chart-2: #2DA6B2;
+        --chart-3: #21808D;
+        --chart-4: #29969E;
+        --chart-5: #3DD0DF;
+
+        /* Sidebar — чуть темнее фона */
+        --sidebar: #171919;
+        --sidebar-foreground: #F5F5F5;
+        --sidebar-primary: #32B8C6;
+        --sidebar-primary-foreground: #13343B;
+        --sidebar-accent: #262828;
+        --sidebar-accent-foreground: #A7A9A9;
+        --sidebar-border: #353A3A;
+        --sidebar-ring: #32B8C6;
     }
 
-    /* Ваши базовые стили для body */
+    /* ── Базовые стили ─────────────────────────────────────────────────── */
     body {
-        @apply bg-background text-foreground;
+        background: #0A0D0D;
+        color: #F5F5F5;
     }
 }
 
-/* 3. Ваши кастомные стили, не относящиеся к Tailwind, можно оставить здесь */
-/* Custom scrollbar styling for music app aesthetic */
+/* ─── VL-specific component classes ───────────────────────────────────── */
+
+/* Ambient background (VL Home Screen adapted for music) */
+.vl-app-root {
+    background: #0A0D0D;
+    background-image:
+        radial-gradient(ellipse 90% 65% at 10% -10%,  rgba(33, 128, 141, 0.22) 0%, transparent 58%),
+        radial-gradient(ellipse 65% 55% at 92% 105%, rgba(26, 104, 115, 0.16) 0%, transparent 55%),
+        radial-gradient(ellipse 45% 35% at 60% 15%,  rgba(50, 184, 198, 0.07) 0%, transparent 50%);
+}
+
+/* VL header bar */
+.vl-header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px 0 16px;
+    gap: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    flex-shrink: 0;
+    -webkit-app-region: drag;
+}
+
+/* Logo icon */
+.vl-logo-icon-wrap {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #21808D 0%, #32B8C6 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 14px rgba(33, 128, 141, 0.45);
+    flex-shrink: 0;
+    -webkit-app-region: no-drag;
+}
+
+.vl-logo-text {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #7DDDE8 0%, #A8EFEF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    -webkit-app-region: no-drag;
+    user-select: none;
+}
+
+/* VL search bar */
+.vl-search {
+    flex: 1;
+    max-width: 360px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9px;
+    padding: 0 13px;
+    height: 35px;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    -webkit-app-region: no-drag;
+}
+
+.vl-search:focus-within {
+    border-color: rgba(50, 184, 198, 0.60);
+    background: rgba(255, 255, 255, 0.075);
+    box-shadow: 0 0 0 3px rgba(50, 184, 198, 0.14);
+}
+
+.vl-search-icon {
+    width: 13px;
+    height: 13px;
+    color: rgba(255, 255, 255, 0.30);
+    flex-shrink: 0;
+}
+
+.vl-search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    caret-color: #32B8C6;
+    min-width: 0;
+}
+
+.vl-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.26);
+}
+
+/* VL header action buttons */
+.vl-header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+    -webkit-app-region: no-drag;
+}
+
+.vl-header-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.vl-header-btn--primary {
+    background: linear-gradient(135deg, #21808D 0%, #2DA6B2 100%);
+    color: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 1px 10px rgba(33, 128, 141, 0.38),
+                inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.vl-header-btn--primary:hover {
+    background: linear-gradient(135deg, #27969F 0%, #32B8C6 100%);
+    box-shadow: 0 4px 18px rgba(33, 128, 141, 0.52);
+    transform: translateY(-1px);
+}
+
+.vl-header-btn--primary:active {
+    transform: translateY(0);
+}
+
+.vl-header-btn--secondary {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.70);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+}
+
+.vl-header-btn--secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.20);
+    transform: translateY(-1px);
+}
+
+/* VL Sidebar */
+.vl-sidebar {
+    width: 205px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 10px 14px;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.14);
+    gap: 2px;
+    overflow: hidden;
+}
+
+.vl-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.22);
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    padding: 0 10px;
+    margin: 10px 0 6px;
+    user-select: none;
+}
+
+.vl-sidebar-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 6px 10px;
+}
+
+.vl-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: none;
+    background: none;
+    color: rgba(255, 255, 255, 0.40);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-align: left;
+    width: 100%;
+    letter-spacing: -0.01em;
+}
+
+.vl-sidebar-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.vl-sidebar-item.is-active {
+    background: rgba(50, 184, 198, 0.14);
+    color: rgba(143, 232, 240, 0.95);
+}
+
+.vl-sidebar-item svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.vl-sidebar-footer {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.vl-sidebar-version {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.17);
+    padding: 0 12px;
+    user-select: none;
+}
+
+/* VL View title (gradient text) */
+.vl-view-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, #A8EFEF 0%, #7DDDE8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.vl-view-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.28);
+    margin: 0 0 28px;
+}
+
+/* VL section header inside content */
+.vl-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+}
+
+/* VL quick-access cards (home grid) */
+.vl-quick-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: background 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.18s, transform 0.12s;
+    user-select: none;
+}
+
+.vl-quick-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.13);
+    transform: translateY(-1px);
+}
+
+.vl-quick-card:active {
+    transform: scale(0.98);
+}
+
+.vl-quick-card-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.vl-quick-card-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: -0.01em;
+}
+
+/* ─── Кастомный скроллбар ──────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -98,59 +435,57 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--muted);
-    border-radius: 4px;
+    background: rgba(119, 124, 124, 0.25);
+    border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--muted-foreground);
+    background: rgba(119, 124, 124, 0.45);
 }
 
-/* Smooth transitions (без глобальных transform/opacity, чтобы убрать дергания текста) */
+/* ─── Плавные переходы ─────────────────────────────────────────────────── */
 * {
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     transition-duration: 200ms;
 }
 
-/* Утилиты для появления контента приложения */
+/* ─── Утилиты анимаций ─────────────────────────────────────────────────── */
 @layer utilities {
     .app-fade-in {
         @apply animate-in fade-in-0 duration-300 ease-out;
     }
-    .view-anim-in-right { @apply animate-in fade-in-0 slide-in-from-right-2 duration-200 ease-out transform-gpu; }
-    .view-anim-in-left { @apply animate-in fade-in-0 slide-in-from-left-2 duration-200 ease-out transform-gpu; }
-    .view-anim-out-left { @apply animate-out fade-out-0 slide-out-to-left-2 duration-200 ease-in transform-gpu; }
-    .view-anim-out-right { @apply animate-out fade-out-0 slide-out-to-right-2 duration-200 ease-in transform-gpu; }
-    /* Вертикальный свайп (объёмный) */
-    /* Более лёгкие keyframes только на transform */
+    .view-anim-in-right  { @apply animate-in  fade-in-0  slide-in-from-right-2  duration-200 ease-out transform-gpu; }
+    .view-anim-in-left   { @apply animate-in  fade-in-0  slide-in-from-left-2   duration-200 ease-out transform-gpu; }
+    .view-anim-out-left  { @apply animate-out fade-out-0 slide-out-to-left-2    duration-200 ease-in  transform-gpu; }
+    .view-anim-out-right { @apply animate-out fade-out-0 slide-out-to-right-2   duration-200 ease-in  transform-gpu; }
+
     @keyframes slide-up-in-fast {
-        0%   { transform: translate3d(0,20px,0); }
-        100% { transform: translate3d(0,0,0); }
+        0%   { transform: translate3d(0, 20px, 0); }
+        100% { transform: translate3d(0, 0,    0); }
     }
-    .elevate-in-up  { animation: slide-up-in-fast  140ms cubic-bezier(.2,.8,.2,1) both; will-change: transform; backface-visibility: hidden; transform: translateZ(0); }
+    .elevate-in-up { animation: slide-up-in-fast 140ms cubic-bezier(.2,.8,.2,1) both; will-change: transform; backface-visibility: hidden; transform: translateZ(0); }
     .will-change-transform { will-change: transform, opacity; backface-visibility: hidden; }
     .text-crisp { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
     .contain-paint { contain: paint; }
 
-    /* Tap-to-navigate feedback for home cards */
     @keyframes card-tap-out {
-        0%   { transform: translate3d(0,0,0) scale(1); }
-        100% { transform: translate3d(0,-8px,0) scale(0.99); }
+        0%   { transform: translate3d(0, 0,   0) scale(1);    }
+        100% { transform: translate3d(0, -8px, 0) scale(0.99); }
     }
     .card-tap-out { animation: card-tap-out 120ms ease-out both; will-change: transform; transform: translateZ(0); }
 }
 
 /* ===================================================================
-   MUSIC PLAYER — redesign
+   MUSIC PLAYER — Vision Lumina redesign
    =================================================================== */
 
 /* ── Compact bar ──────────────────────────────────────────── */
 .player-bar {
     height: 80px;
     position: relative;
-    background: rgba(0, 0, 0, 0.97);
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    background: #171919;
+    border-top: 1px solid rgba(119, 124, 124, 0.2);
 }
 
 .player-bar--empty {
@@ -167,12 +502,12 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    color: var(--sidebar-accent-foreground);
+    color: #A7A9A9;
     flex-shrink: 0;
     cursor: pointer;
     transition: color 130ms ease, background-color 130ms ease, transform 80ms ease;
 }
-.player-btn:hover  { color: #fff; background: rgba(255, 255, 255, 0.09); }
+.player-btn:hover  { color: #F5F5F5; background: rgba(119, 124, 124, 0.15); }
 .player-btn:active { transform: scale(0.84); }
 
 .player-play-btn {
@@ -180,16 +515,16 @@
     height: 38px;
     border-radius: 50%;
     background: var(--primary);
-    color: #fff;
+    color: #13343B;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     cursor: pointer;
-    box-shadow: 0 4px 18px rgba(29, 185, 84, 0.40);
+    box-shadow: 0 4px 18px rgba(50, 184, 198, 0.40);
     transition: transform 80ms ease, background-color 130ms ease, box-shadow 200ms ease;
 }
-.player-play-btn:hover  { background: #1ed760; transform: scale(1.07); box-shadow: 0 6px 24px rgba(29, 185, 84, 0.55); }
+.player-play-btn:hover  { background: #3DD0DF; transform: scale(1.07); box-shadow: 0 6px 24px rgba(50, 184, 198, 0.55); }
 .player-play-btn:active { transform: scale(0.92); }
 
 /* ── EQ bar keyframes ─────────────────────────────────────── */
@@ -215,15 +550,15 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.10);
-    color: rgba(255, 255, 255, 0.75);
+    background: rgba(119, 124, 124, 0.15);
+    color: rgba(245, 245, 245, 0.75);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: background 130ms ease, color 130ms ease, transform 80ms ease;
 }
-.player-fs-close:hover  { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.player-fs-close:hover  { background: rgba(119, 124, 124, 0.30); color: #F5F5F5; }
 .player-fs-close:active { transform: scale(0.86); }
 
 /* ── Fullscreen control buttons ───────────────────────────── */
@@ -234,11 +569,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.58);
+    color: rgba(245, 245, 245, 0.58);
     cursor: pointer;
     transition: color 130ms ease, background-color 130ms ease, transform 80ms ease;
 }
-.player-fs-btn:hover  { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.player-fs-btn:hover  { color: #F5F5F5; background: rgba(119, 124, 124, 0.18); }
 .player-fs-btn:active { transform: scale(0.84); }
 
 .player-fs-play {
@@ -246,16 +581,24 @@
     height: 62px;
     border-radius: 50%;
     background: var(--primary);
-    color: #fff;
+    color: #13343B;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 8px 32px rgba(29, 185, 84, 0.48);
+    box-shadow: 0 8px 32px rgba(50, 184, 198, 0.48);
     transition: transform 80ms ease, background-color 130ms ease, box-shadow 200ms ease;
 }
-.player-fs-play:hover  { background: #1ed760; transform: scale(1.08); box-shadow: 0 12px 44px rgba(29, 185, 84, 0.60); }
+.player-fs-play:hover  { background: #3DD0DF; transform: scale(1.08); box-shadow: 0 12px 44px rgba(50, 184, 198, 0.62); }
 .player-fs-play:active { transform: scale(0.92); }
+
+.player-fs-vol-btn {
+    color: rgba(245, 245, 245, 0.42);
+    cursor: pointer;
+    transition: color 130ms ease, transform 80ms ease;
+}
+.player-fs-vol-btn:hover  { color: rgba(245, 245, 245, 0.85); }
+.player-fs-vol-btn:active { transform: scale(0.88); }
 
 /* ── Vinyl record ─────────────────────────────────────────── */
 @keyframes vinyl-float {
@@ -286,14 +629,14 @@
             rgba(255, 255, 255, 0.018)    9px,
             rgba(255, 255, 255, 0.018)   10px
         ),
-        radial-gradient(circle at center, #2e2e2e 0%, #0d0d0d 100%);
+        radial-gradient(circle at center, #2a2c2c 0%, #0d0f0f 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
     box-shadow:
-        0 28px 72px rgba(0, 0, 0, 0.88),
-        0  0   0 2px rgba(255, 255, 255, 0.04);
+        0 28px 72px rgba(0, 0, 0, 0.80),
+        0  0   0 2px rgba(50, 184, 198, 0.08);
     animation: vinyl-spin 6s linear infinite;
     animation-play-state: paused;
     will-change: transform;
@@ -312,7 +655,7 @@
     z-index: 1;
     box-shadow:
         0 0 0 3px rgba(0, 0, 0, 0.65),
-        0 0 0 4px rgba(255, 255, 255, 0.04);
+        0 0 0 4px rgba(50, 184, 198, 0.06);
 }
 
 .player-vinyl__hole {
@@ -323,6 +666,6 @@
     position: absolute;
     z-index: 2;
     box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 0 0 1px rgba(50, 184, 198, 0.12),
         inset 0 0 6px rgba(0, 0, 0, 0.95);
 }

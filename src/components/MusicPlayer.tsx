@@ -37,6 +37,10 @@ const ProgressBar: React.FC<{
   className?: string;
 }> = ({ value, onChange, className = '' }) => {
   const ref = useRef<HTMLDivElement>(null);
+  // Храним onChange в ref, чтобы не переподписывать слушателей при каждом рендере
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; });
+
   const [hov, setHov] = useState(false);
   const [drag, setDrag] = useState(false);
 
@@ -48,12 +52,12 @@ const ProgressBar: React.FC<{
 
   const onMouseDown = (e: React.MouseEvent) => {
     setDrag(true);
-    onChange(getVal(e.clientX));
+    onChangeRef.current(getVal(e.clientX));
   };
 
   useEffect(() => {
     if (!drag) return;
-    const move = (e: MouseEvent) => onChange(getVal(e.clientX));
+    const move = (e: MouseEvent) => onChangeRef.current(getVal(e.clientX));
     const up = () => setDrag(false);
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
@@ -61,7 +65,7 @@ const ProgressBar: React.FC<{
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
     };
-  }, [drag, onChange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drag]); // onChange вынесен в ref — переподписка не нужна
 
   const active = hov || drag;
 
@@ -141,9 +145,13 @@ export const MusicPlayer: React.FC = () => {
   const fsPy            = h < 580 ? 'py-3'  : h < 720 ? 'py-5'  : 'py-10';
   const showFsVolume    = h >= 500;
 
-  const isLive    = currentTrack && (currentTrack.album === 'Stream' || currentTrack.duration === 0);
-  const progress  = duration > 0 && isFinite(currentTime) ? currentTime / duration : 0;
-  const VolumeIcon = !volume ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+  // Bug fix: явный boolean, чтобы тип не был null|boolean до early return
+  const isLive    = !!(currentTrack && (currentTrack.album === 'Stream' || currentTrack.duration === 0));
+  // Bug fix: зажимаем в [0,1] — currentTime может кратко превысить duration
+  const progress  = duration > 0 && isFinite(currentTime)
+    ? Math.min(1, Math.max(0, currentTime / duration))
+    : 0;
+  const VolumeIcon = volume <= 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   // ── Track-change animation ───────────────────────────────
   useEffect(() => {
@@ -162,9 +170,10 @@ export const MusicPlayer: React.FC = () => {
 
   useEffect(() => {
     if (!isFullscreen) return;
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') closeFullscreen(); };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
+    // Bug fix: переменная h переименована в handleKey — конфликт с h из useWindowSize()
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeFullscreen(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
   }, [isFullscreen, closeFullscreen]);
 
   const openFullscreen = () => {
@@ -174,7 +183,8 @@ export const MusicPlayer: React.FC = () => {
 
   const handleVolumeWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    setVolume(Math.max(0, Math.min(1, (volume || 1) + (e.deltaY > 0 ? -0.05 : 0.05))));
+    // Bug fix: убран (volume || 1) — при volume=0 он давал 1, прокрутка вверх = max
+    setVolume(Math.max(0, Math.min(1, volume + (e.deltaY > 0 ? -0.05 : 0.05))));
   };
 
   // ── Empty state ──────────────────────────────────────────
@@ -462,13 +472,11 @@ export const MusicPlayer: React.FC = () => {
               style={{ opacity: fsVisible ? 1 : 0, transition: 'opacity 0.22s ease 0.13s' }}
               onWheel={handleVolumeWheel}
             >
+              {/* Bug fix: убрана прямая мутация DOM через e.currentTarget.style — сбрасывалась при ре-рендере */}
               <button
-                className="transition-colors duration-150"
-                style={{ color: 'rgba(255,255,255,0.4)' }}
+                className="player-fs-vol-btn"
                 onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
                 aria-label="Mute"
-                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
               >
                 <VolumeIcon className="h-4 w-4" />
               </button>
