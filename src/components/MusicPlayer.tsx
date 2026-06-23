@@ -4,6 +4,7 @@ import {
   Volume2, Volume1, VolumeX, Music, ChevronDown, Maximize2,
 } from 'lucide-react';
 import { useMusicContext } from './MusicContext';
+import { parseLRC, type LyricLine } from '../utils/lrcParser';
 
 const formatTime = (s: number): string => {
   if (!isFinite(s) || isNaN(s)) return '0:00';
@@ -83,7 +84,7 @@ const ProgressBar: React.FC<{
         className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full overflow-hidden"
         style={{
           background: 'rgba(255,255,255,0.13)',
-          height: active ? 5 : 3,
+          height: active ? 8 : 5,
           transition: 'height 0.15s ease',
         }}
       >
@@ -132,6 +133,77 @@ export const MusicPlayer: React.FC = () => {
   const [fsVisible, setFsVisible]       = useState(false);
   const [infoVisible, setInfoVisible]   = useState(true);
   const prevTrackIdRef = useRef<string | null>(null);
+
+  const [lyrics, setLyrics] = useState<LyricLine[]>([]);
+  const lyricsContainerRef = useRef<HTMLDivElement>(null);
+  
+  const [isManualScrolling, setIsManualScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isFsIdle, setIsFsIdle] = useState(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetIdleTimer = useCallback(() => {
+    setIsFsIdle(false);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      setIsFsIdle(true);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    if (fsVisible) {
+      resetIdleTimer();
+    } else {
+      setIsFsIdle(false);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    }
+  }, [fsVisible, resetIdleTimer]);
+
+  const handleUserScroll = () => {
+    setIsManualScrolling(true);
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsManualScrolling(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    if (!currentTrack || !window.electronAPI?.getLyrics) {
+      setLyrics([]);
+      return;
+    }
+    // Fetch lyrics asynchronously
+    window.electronAPI.getLyrics(currentTrack.path).then((text) => {
+      setLyrics(parseLRC(text || ''));
+      setIsManualScrolling(false); // Reset manual scrolling on new track
+    }).catch(() => setLyrics([]));
+  }, [currentTrack]);
+
+  // Auto-scroll lyrics
+  useEffect(() => {
+    if (lyrics.length === 0 || !fsVisible || !lyricsContainerRef.current || isManualScrolling) return;
+    
+    let activeIdx = -1;
+    for (let i = 0; i < lyrics.length; i++) {
+      if (currentTime >= lyrics[i].time) {
+        activeIdx = i;
+      } else {
+        break;
+      }
+    }
+
+    if (activeIdx !== -1) {
+      const container = lyricsContainerRef.current;
+      const activeElement = container.querySelector(`[data-index="${activeIdx}"]`) as HTMLElement;
+      if (activeElement) {
+        const offset = activeElement.offsetTop - container.clientHeight / 2 + activeElement.clientHeight / 2;
+        container.scrollTo({ top: offset, behavior: 'smooth' });
+      }
+    }
+  }, [currentTime, lyrics, fsVisible, isManualScrolling]);
+
+
 
   // ── Responsive breakpoints ───────────────────────────────
   const hideVolume      = w < 700;          // скрыть громкость
@@ -341,7 +413,12 @@ export const MusicPlayer: React.FC = () => {
 
       {/* ═══════════════ Fullscreen overlay ═══════════════ */}
       {isFullscreen && (
-        <div className={`player-fs ${fsVisible ? 'player-fs--in' : ''}`}>
+        <div 
+          className={`player-fs ${fsVisible ? 'player-fs--in' : ''} ${isFsIdle ? 'cursor-none' : ''}`}
+          onMouseMove={resetIdleTimer}
+          onClick={resetIdleTimer}
+          onKeyDown={resetIdleTimer}
+        >
 
           {/* Blurred background */}
           <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -362,131 +439,184 @@ export const MusicPlayer: React.FC = () => {
             className="player-fs-close"
             onClick={closeFullscreen}
             aria-label="Закрыть"
+            style={{
+              opacity: isFsIdle ? 0 : 1,
+              pointerEvents: isFsIdle ? 'none' : 'auto',
+              transition: 'opacity 0.4s ease'
+            }}
           >
             <ChevronDown className="h-5 w-5" />
           </button>
 
           {/* Main content column */}
-          <div className={`relative z-10 h-full flex flex-col items-center justify-center ${fsGap} px-8 ${fsPy}`}>
+          <div className={`relative z-10 w-full h-full flex ${lyrics.length > 0 ? 'flex-col lg:flex-row gap-10 lg:gap-24' : 'flex-col'} items-center justify-center px-8 ${fsPy}`}>
 
-            {/* ── Vinyl record ──────────────────────── */}
-            <div className="player-vinyl-outer">
-              <div className={`player-vinyl__disc ${isPlaying ? 'player-vinyl__disc--spin' : ''}`}>
-                <div className="player-vinyl__label">
-                  {currentTrack.cover
-                    ? <img
-                        src={currentTrack.cover}
-                        alt={currentTrack.name}
-                        className="w-full h-full object-cover"
-                      />
-                    : <div
-                        className="w-full h-full flex items-center justify-center"
-                        style={{ background: '#1e1e1e' }}
-                      >
-                        <Music className="text-neutral-600" style={{ width: '32%', height: '32%' }} />
-                      </div>
-                  }
+            {/* ── Left Side: Player Controls ── */}
+            <div className={`flex flex-col items-center justify-center transition-all duration-500 ease-in-out ${lyrics.length > 0 ? 'flex-1 w-full max-w-2xl' : ''}`}>
+              {/* ── Album Cover ──────────────────────── */}
+              <div 
+                className="relative rounded-2xl overflow-hidden shadow-2xl mb-6 flex-shrink-0"
+                style={{
+                  width: lyrics.length > 0 ? (isFsIdle ? 'min(500px, 65vh)' : 'min(320px, 40vh)') : 'min(380px, 50vh)',
+                  height: lyrics.length > 0 ? (isFsIdle ? 'min(500px, 65vh)' : 'min(320px, 40vh)') : 'min(380px, 50vh)',
+                  boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 40px rgba(50,184,198,0.15)',
+                  opacity: fsVisible ? 1 : 0,
+                  transform: fsVisible ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.96)',
+                  transition: 'opacity 0.4s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                }}
+              >
+                {currentTrack.cover
+                  ? <img
+                      src={currentTrack.cover}
+                      alt={currentTrack.name}
+                      className="w-full h-full object-cover"
+                    />
+                  : <div
+                      className="w-full h-full flex items-center justify-center bg-neutral-900"
+                    >
+                      <Music className="text-neutral-700 w-1/3 h-1/3" />
+                    </div>
+                }
+              </div>
+
+              {/* ── UI Elements Container (collapses when AFK) ── */}
+              <div 
+                className="w-full flex flex-col items-center overflow-hidden transition-all duration-700 ease-in-out"
+                style={{
+                  maxHeight: (isFsIdle && lyrics.length > 0) ? '0px' : '400px',
+                  opacity: (fsVisible && !isFsIdle) ? 1 : 0,
+                  pointerEvents: isFsIdle ? 'none' : 'auto'
+                }}
+              >
+                {/* ── Track info ────────────────────────── */}
+                <div
+                  className="text-center"
+                  style={{
+                    transform:  (fsVisible && !isFsIdle) ? 'translateY(0)' : 'translateY(8px)',
+                    transition: 'transform 0.4s ease',
+                  }}
+                >
+                  <p className="text-2xl font-bold text-white leading-tight">
+                    {currentTrack.name}
+                  </p>
+                  <p className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    {currentTrack.artist}
+                  </p>
+                  {currentTrack.album && currentTrack.album !== 'Stream' && (
+                    <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {currentTrack.album}
+                    </p>
+                  )}
                 </div>
-                <div className="player-vinyl__hole" />
+
+                {/* ── Progress ──────────────────────────── */}
+                {isLive
+                  ? <div className="flex items-center gap-2 font-semibold text-red-400 mt-6">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      LIVE
+                    </div>
+                  : <div className="w-full max-w-[85%] sm:max-w-md mt-6 mx-auto">
+                      <ProgressBar
+                        value={progress}
+                        onChange={v => seek(v * duration)}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between mt-2">
+                        <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          {formatTime(currentTime)}
+                        </span>
+                        <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                          {formatTime(duration)}
+                        </span>
+                      </div>
+                    </div>
+                }
+
+                {/* ── Playback controls ─────────────────── */}
+                <div
+                  className="flex items-center gap-5 mt-6"
+                  style={{
+                    transform:  (fsVisible && !isFsIdle) ? 'translateY(0)' : 'translateY(8px)',
+                    transition: 'transform 0.4s ease',
+                  }}
+                >
+                  <button className="player-fs-btn" onClick={previous} aria-label="Назад">
+                    <SkipBack className="h-6 w-6" />
+                  </button>
+                  <button
+                    className="player-fs-play"
+                    onClick={togglePlay}
+                    aria-label={isPlaying ? 'Пауза' : 'Играть'}
+                  >
+                    {isPlaying
+                      ? <Pause className="h-7 w-7" />
+                      : <Play  className="h-7 w-7 translate-x-0.5" />
+                    }
+                  </button>
+                  <button className="player-fs-btn" onClick={next} aria-label="Вперёд">
+                    <SkipForward className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {/* ── Volume ────────────────────────────── */}
+                {showFsVolume && <div
+                  className="flex items-center gap-3 mt-8"
+                  onWheel={handleVolumeWheel}
+                >
+                  <button
+                    className="player-fs-vol-btn"
+                    onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                    aria-label="Mute"
+                  >
+                    <VolumeIcon className="h-4 w-4" />
+                  </button>
+                  <ProgressBar
+                    value={typeof volume === 'number' ? volume : 1}
+                    onChange={setVolume}
+                    className="w-32"
+                  />
+                </div>}
               </div>
             </div>
 
-            {/* ── Track info ────────────────────────── */}
-            <div
-              className="text-center"
-              style={{
-                opacity:    fsVisible ? 1 : 0,
-                transform:  fsVisible ? 'translateY(0)' : 'translateY(8px)',
-                transition: 'opacity 0.22s ease 0.04s, transform 0.22s ease 0.04s',
-              }}
-            >
-              <p className="text-2xl font-bold text-white leading-tight">
-                {currentTrack.name}
-              </p>
-              <p className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                {currentTrack.artist}
-              </p>
-              {currentTrack.album && currentTrack.album !== 'Stream' && (
-                <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  {currentTrack.album}
-                </p>
-              )}
-            </div>
-
-            {/* ── Progress ──────────────────────────── */}
-            {isLive
-              ? <div className="flex items-center gap-2 font-semibold text-red-400">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  LIVE
-                </div>
-              : <div
-                  className="w-full max-w-sm"
-                  style={{ opacity: fsVisible ? 1 : 0, transition: 'opacity 0.22s ease 0.07s' }}
-                >
-                  <ProgressBar
-                    value={progress}
-                    onChange={v => seek(v * duration)}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between mt-2">
-                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                      {formatTime(currentTime)}
-                    </span>
-                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                      {formatTime(duration)}
-                    </span>
-                  </div>
-                </div>
-            }
-
-            {/* ── Playback controls ─────────────────── */}
-            <div
-              className="flex items-center gap-5"
-              style={{
-                opacity:    fsVisible ? 1 : 0,
-                transform:  fsVisible ? 'translateY(0)' : 'translateY(8px)',
-                transition: 'opacity 0.22s ease 0.1s, transform 0.22s ease 0.1s',
-              }}
-            >
-              <button className="player-fs-btn" onClick={previous} aria-label="Назад">
-                <SkipBack className="h-6 w-6" />
-              </button>
-              <button
-                className="player-fs-play"
-                onClick={togglePlay}
-                aria-label={isPlaying ? 'Пауза' : 'Играть'}
+            {/* ── Right Side: Lyrics ── */}
+            {lyrics.length > 0 && (
+              <div 
+                className="flex-1 w-full h-full max-h-[60vh] max-w-2xl overflow-y-auto scrollbar-hide relative mask-linear-fade hidden lg:block"
+                ref={lyricsContainerRef}
+                onWheel={handleUserScroll}
+                onTouchMove={handleUserScroll}
+                style={{
+                  opacity: fsVisible ? 1 : 0,
+                  transform: fsVisible ? 'translateX(0)' : 'translateX(16px)',
+                  transition: 'opacity 0.4s ease 0.2s, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) 0.2s',
+                  // Fade edges
+                  maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+                }}
               >
-                {isPlaying
-                  ? <Pause className="h-7 w-7" />
-                  : <Play  className="h-7 w-7 translate-x-0.5" />
-                }
-              </button>
-              <button className="player-fs-btn" onClick={next} aria-label="Вперёд">
-                <SkipForward className="h-6 w-6" />
-              </button>
-            </div>
-
-            {/* ── Volume ────────────────────────────── */}
-            {showFsVolume && <div
-              className="flex items-center gap-3"
-              style={{ opacity: fsVisible ? 1 : 0, transition: 'opacity 0.22s ease 0.13s' }}
-              onWheel={handleVolumeWheel}
-            >
-              {/* Bug fix: убрана прямая мутация DOM через e.currentTarget.style — сбрасывалась при ре-рендере */}
-              <button
-                className="player-fs-vol-btn"
-                onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
-                aria-label="Mute"
-              >
-                <VolumeIcon className="h-4 w-4" />
-              </button>
-              <ProgressBar
-                value={typeof volume === 'number' ? volume : 1}
-                onChange={setVolume}
-                className="w-32"
-              />
-            </div>}
-
+                <div className="py-[30vh]">
+                  {lyrics.map((line, idx) => {
+                    // Check if current line is active
+                    const isActive = currentTime >= line.time && (idx === lyrics.length - 1 || currentTime < lyrics[idx + 1].time);
+                    return (
+                      <p 
+                        key={idx}
+                        data-index={idx}
+                        className={`text-2xl md:text-3xl lg:text-4xl font-bold mb-8 transition-all duration-500 ease-out origin-left cursor-pointer
+                          ${isActive ? 'text-white scale-[1.05] drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' : 'text-white/30 hover:text-white/50'}
+                        `}
+                        onClick={() => {
+                          if (line.time >= 0) seek(line.time);
+                        }}
+                      >
+                        {line.text}
+                      </p>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

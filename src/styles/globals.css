@@ -282,8 +282,12 @@
     display: flex;
     flex-direction: column;
     padding: 16px 10px 14px;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(0, 0, 0, 0.14);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 16px;
+    margin: 16px 0 16px 16px;
     gap: 2px;
     overflow: hidden;
 }
@@ -484,8 +488,13 @@
 .player-bar {
     height: 80px;
     position: relative;
-    background: #171919;
-    border-top: 1px solid rgba(119, 124, 124, 0.2);
+    background: rgba(23, 25, 25, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    margin: 0 16px 16px 16px;
+    overflow: hidden;
 }
 
 .player-bar--empty {
@@ -505,10 +514,10 @@
     color: #A7A9A9;
     flex-shrink: 0;
     cursor: pointer;
-    transition: color 130ms ease, background-color 130ms ease, transform 80ms ease;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.player-btn:hover  { color: #F5F5F5; background: rgba(119, 124, 124, 0.15); }
-.player-btn:active { transform: scale(0.84); }
+.player-btn:hover  { color: #F5F5F5; background: rgba(255, 255, 255, 0.1); transform: scale(1.05); }
+.player-btn:active { transform: scale(0.9); }
 
 .player-play-btn {
     width: 38px;
@@ -540,8 +549,21 @@
     opacity: 0;
     transition: opacity 250ms ease;
 }
-.player-fs--in { opacity: 1; }
+.player-fs--in {
+  opacity: 1;
+  pointer-events: auto;
+}
 
+/* Скрываем скроллбар для контейнера с текстом */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Кнопка закрытия */
 .player-fs-close {
     position: absolute;
     top: 16px;
@@ -577,20 +599,26 @@
 .player-fs-btn:active { transform: scale(0.84); }
 
 .player-fs-play {
-    width: 62px;
-    height: 62px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
-    background: var(--primary);
-    color: #13343B;
+    background: #ffffff;
+    color: #000000;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 8px 32px rgba(50, 184, 198, 0.48);
-    transition: transform 80ms ease, background-color 130ms ease, box-shadow 200ms ease;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms ease, box-shadow 150ms ease;
 }
-.player-fs-play:hover  { background: #3DD0DF; transform: scale(1.08); box-shadow: 0 12px 44px rgba(50, 184, 198, 0.62); }
-.player-fs-play:active { transform: scale(0.92); }
+.player-fs-play:hover {
+    transform: scale(1.05);
+    background: #f0f0f0;
+}
+.player-fs-play:active {
+    transform: scale(0.95);
+    background: #e0e0e0;
+}
 
 .player-fs-vol-btn {
     color: rgba(245, 245, 245, 0.42);

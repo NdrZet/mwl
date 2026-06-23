@@ -28,12 +28,14 @@ interface TrackListProps {
   tracks?: Track[];
   showSearch?: boolean;
   onPlayAll?: () => void;
+  disableScroll?: boolean;
 }
 
 export const TrackList: React.FC<TrackListProps> = ({
                                                       tracks: propTracks,
                                                       showSearch = true,
-                                                      onPlayAll
+                                                      onPlayAll,
+                                                      disableScroll = false
                                                     }) => {
   const {
     tracks: allTracks,
@@ -134,32 +136,9 @@ export const TrackList: React.FC<TrackListProps> = ({
     );
   }
 
-  return (
-      <div className="space-y-6">
-        {showSearch && (
-            <div className="flex items-center justify-between">
-              <Input
-                  placeholder="Search tracks, artists, albums..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="max-w-sm bg-muted border-0"
-              />
-              {filteredTracks.length > 0 && (
-                  <Button
-                      onClick={handlePlayAll}
-                      className="bg-primary hover:bg-primary/90"
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    Play All
-                  </Button>
-              )}
-            </div>
-        )}
-
-        {filteredTracks.length > 0 && (
-            <ScrollArea className="h-[calc(100vh-420px)]">
-              <div className="space-y-1 pr-4">
-                {/* Table Header */}
+  const trackListContent = (
+    <div className="space-y-1 pr-4">
+      {/* Table Header */}
                 <div className="grid grid-cols-12 gap-4 px-4 py-2 text-muted-foreground border-b border-border text-sm">
                   <div className="col-span-1 text-center">#</div>
                   <div className="col-span-6">Title</div>
@@ -254,8 +233,39 @@ export const TrackList: React.FC<TrackListProps> = ({
                       </div>
                     </div>
                 ))}
-              </div>
-            </ScrollArea>
+    </div>
+  );
+
+  return (
+      <div className="space-y-6">
+        {showSearch && (
+            <div className="flex items-center justify-between">
+              <Input
+                  placeholder="Search tracks, artists, albums..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="max-w-sm bg-muted border-0"
+              />
+              {filteredTracks.length > 0 && (
+                  <Button
+                      onClick={handlePlayAll}
+                      className="bg-primary hover:bg-primary/90"
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    Play All
+                  </Button>
+              )}
+            </div>
+        )}
+
+        {filteredTracks.length > 0 && (
+            disableScroll ? (
+              trackListContent
+            ) : (
+              <ScrollArea className="h-[calc(100vh-420px)]">
+                {trackListContent}
+              </ScrollArea>
+            )
         )}
 
         {filteredTracks.length === 0 && searchQuery && (

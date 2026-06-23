@@ -1,11 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useMusicContext, type Track } from './MusicContext';
 import { Card, CardContent } from './ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Music } from 'lucide-react';
-import { TrackList } from './TrackList';
 
-interface AlbumInfo {
+export interface AlbumInfo {
   name: string;
   artist: string;
   cover: string | null;
@@ -15,11 +13,11 @@ interface AlbumInfo {
 interface AlbumsGridProps {
   mode?: 'recent' | 'all';
   limit?: number;
+  onAlbumClick?: (album: AlbumInfo) => void;
 }
 
-export const AlbumsGrid: React.FC<AlbumsGridProps> = ({ mode = 'recent', limit = 4 }) => {
+export const AlbumsGrid: React.FC<AlbumsGridProps> = ({ mode = 'recent', limit = 4, onAlbumClick }) => {
   const { tracks } = useMusicContext();
-  const [openedAlbum, setOpenedAlbum] = useState<AlbumInfo | null>(null);
 
   const albums = useMemo<AlbumInfo[]>(() => {
     // Ключ нормализован по нижнему регистру — «Pop» и «pop» попадают в одну группу
@@ -55,7 +53,7 @@ export const AlbumsGrid: React.FC<AlbumsGridProps> = ({ mode = 'recent', limit =
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
         {albums.map((album) => (
-          <Card key={`${album.name}::${album.artist}`} className="bg-card/50 hover:bg-card transition-colors cursor-pointer border-0" onClick={() => setOpenedAlbum(album)}>
+          <Card key={`${album.name}::${album.artist}`} className="bg-card/50 hover:bg-card transition-colors cursor-pointer border-0" onClick={() => onAlbumClick?.(album)}>
             <CardContent className="p-4">
               <div className="aspect-square rounded-lg overflow-hidden relative bg-muted">
                 {album.cover ? (
@@ -74,33 +72,6 @@ export const AlbumsGrid: React.FC<AlbumsGridProps> = ({ mode = 'recent', limit =
           </Card>
         ))}
       </div>
-
-      <Dialog open={!!openedAlbum} onOpenChange={(open) => !open && setOpenedAlbum(null)}>
-        <DialogContent className="max-w-5xl max-h-[85vh]">
-          {openedAlbum && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-muted rounded flex items-center justify-center overflow-hidden">
-                    {openedAlbum.cover ? (
-                      <img src={openedAlbum.cover} alt={openedAlbum.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Music className="h-8 w-8 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <h2>{openedAlbum.name}</h2>
-                    <p className="text-muted-foreground text-sm">{openedAlbum.artist} • {openedAlbum.tracks.length} tracks</p>
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="overflow-y-auto max-h-[60vh]">
-                <TrackList tracks={openedAlbum.tracks} showSearch={false} />
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

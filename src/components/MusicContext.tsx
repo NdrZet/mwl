@@ -34,6 +34,7 @@ declare global {
       saveTracks: (tracks: Track[]) => void;
       getMetadata: (filePath: string) => Promise<{ title: string, artist: string, album: string, duration: number, cover: string | null }>;
       getCoverPath: (filePath: string) => Promise<string | null>;
+      getLyrics?: (filePath: string) => Promise<string | null>;
       podcastsGetAll?: () => Promise<any[]>;
       podcastsAddByUrl?: (feedUrl: string) => Promise<{ ok: boolean; error?: string }>;
       podcastsRefreshAll?: () => Promise<{ ok: boolean; error?: string }>;
@@ -41,6 +42,12 @@ declare global {
       // radio
       radioGetAll?: () => Promise<RadioStation[]>;
       radioSaveAll?: (stations: RadioStation[]) => Promise<{ ok: boolean; error?: string }>;
+      // stats & settings
+      settingsGet?: () => Promise<any>;
+      settingsSet?: (settings: any) => Promise<boolean>;
+      statsGet?: () => Promise<any>;
+      statsAddPlay?: (track: Track) => Promise<boolean>;
+      statsTrackTime?: (seconds: number) => Promise<boolean>;
     }
   }
 }
@@ -93,7 +100,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolumeState] = useState(1);
+  const [volume, setVolumeState] = useState(0.5);
   const [queue, setQueue] = useState<Track[]>([]);
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
   const [radioStations, setRadioStations] = useState<RadioStation[]>([]);
@@ -216,6 +223,20 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setTracks(prev => prev.map(t => updates[t.id] ? { ...t, cover: updates[t.id] } : t));
       }
     }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Фоновая задача для трекинга времени (статистика)
+  useEffect(() => {
+    const isElectron = !!window.electronAPI;
+    if (!isElectron) return;
+
+    const interval = setInterval(() => {
+      if (!audioRef.current.paused) {
+        window.electronAPI!.statsTrackTime?.(10).catch(() => {});
+      }
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -389,6 +410,12 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Это новый трек, устанавливаем src и играем
     isRadioRef.current = false;
     setCurrentTrack(trackToPlay);
+    
+    // Stats tracking
+    if (isElectron) {
+      window.electronAPI?.statsAddPlay?.(trackToPlay).catch(() => {});
+    }
+
     // Формируем корректный src для локальных файлов под Windows и фоллбэки для blob/data
     // корректная формула: для blob/data/http используем как есть; для файловых путей строим file:///
     if (isElectron) {

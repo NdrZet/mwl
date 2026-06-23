@@ -19,6 +19,10 @@ const podcastsFilePath = path.join(podcastsDir, 'podcasts.json');
 // Радио: файл хранен
 const radioFilePath = path.join(userDataPath, 'radio.json');
 
+// Settings and Stats
+const settingsFilePath = path.join(userDataPath, 'settings.json');
+const statsFilePath = path.join(userDataPath, 'listening-stats.json');
+
 function ensurePodcastDirs() {
     try {
         if (!fs.existsSync(podcastsDir)) fs.mkdirSync(podcastsDir, { recursive: true });
@@ -70,6 +74,42 @@ function saveRadioSafe(stations) {
     } catch (e) {
         console.error('Failed to save radio stations:', e);
     }
+}
+
+// --- SETTINGS STORAGE ---
+function loadSettingsSafe() {
+    try {
+        if (fs.existsSync(settingsFilePath)) {
+            return JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));
+        }
+    } catch (e) { console.error('Failed to load settings:', e); }
+    return {};
+}
+
+function saveSettingsSafe(settings) {
+    try {
+        fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
+    } catch (e) { console.error('Failed to save settings:', e); }
+}
+
+// --- STATS STORAGE ---
+function loadStatsSafe() {
+    try {
+        if (fs.existsSync(statsFilePath)) {
+            return JSON.parse(fs.readFileSync(statsFilePath, 'utf8'));
+        }
+    } catch (e) { console.error('Failed to load stats:', e); }
+    return {
+        totalTimeSeconds: 0,
+        tracksPlayed: {}, 
+        artistsPlayed: {} 
+    };
+}
+
+function saveStatsSafe(stats) {
+    try {
+        fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
+    } catch (e) { console.error('Failed to save stats:', e); }
 }
 
 function fetchBuffer(urlStr) {
@@ -185,6 +225,41 @@ function createWindow() {
 // Она слушает команды, которые приходят из React через preload.js
 
 // Команда "Загрузи треки"
+ipcMain.handle('settings:get', () => loadSettingsSafe());
+ipcMain.handle('settings:set', (event, settings) => {
+    saveSettingsSafe(settings);
+    return true;
+});
+
+ipcMain.handle('stats:get', () => loadStatsSafe());
+
+ipcMain.handle('stats:addPlay', (event, track) => {
+    const stats = loadStatsSafe();
+    const id = `${track.title}|${track.artist}`;
+    
+    if (!stats.tracksPlayed[id]) {
+        stats.tracksPlayed[id] = { playCount: 0, lastPlayed: 0, track: track };
+    }
+    stats.tracksPlayed[id].playCount++;
+    stats.tracksPlayed[id].lastPlayed = Date.now();
+    
+    const artist = track.artist || 'Unknown Artist';
+    if (!stats.artistsPlayed[artist]) {
+        stats.artistsPlayed[artist] = 0;
+    }
+    stats.artistsPlayed[artist]++;
+    
+    saveStatsSafe(stats);
+    return true;
+});
+
+ipcMain.handle('stats:trackTime', (event, seconds) => {
+    const stats = loadStatsSafe();
+    stats.totalTimeSeconds = (stats.totalTimeSeconds || 0) + seconds;
+    saveStatsSafe(stats);
+    return true;
+});
+
 ipcMain.handle('load-tracks', () => {
     try {
         if (fs.existsSync(tracksFilePath)) {
@@ -264,6 +339,76 @@ ipcMain.handle('get-metadata', async (event, filePath) => {
             cover: null
         };
     }
+});
+
+// Команда "Получи текст песни"
+ipcMain.handle('get-lyrics', async (event, filePath) => {
+    if (!filePath || !fs.existsSync(filePath)) return null;
+    
+    // 1. Пытаемся найти .lrc файл рядом с аудиофайлом
+    try {
+        const lrcPath = filePath.replace(/\.[^/.]+$/, "") + ".lrc";
+        if (fs.existsSync(lrcPath)) {
+            return fs.readFileSync(lrcPath, 'utf8');
+        }
+    } catch (e) {
+        console.error('Failed to read .lrc file', e);
+    }
+
+    // 2. Пытаемся достать текст из метаданных (ID3 / MP4 tags)
+    let title = '';
+    let artist = '';
+    let album = '';
+    let duration = 0;
+    try {
+        const metadata = await musicMetadata.parseFile(filePath);
+        if (metadata.common.lyrics && metadata.common.lyrics.length > 0) {
+            return metadata.common.lyrics.join('\n'); // Соединяем куски текста
+        }
+        title = metadata.common.title || '';
+        artist = metadata.common.artist || '';
+        album = metadata.common.album || '';
+        duration = metadata.format?.duration || 0;
+    } catch (e) {
+        console.error('Metadata read failed for lyrics', e);
+    }
+
+    // 3. Пытаемся достать текст из интернета (LRCLIB)
+    if (title && artist) {
+        try {
+            const searchUrl = new URL('https://lrclib.net/api/get');
+            searchUrl.searchParams.append('track_name', title);
+            searchUrl.searchParams.append('artist_name', artist);
+            if (album) searchUrl.searchParams.append('album_name', album);
+            if (duration) searchUrl.searchParams.append('duration', Math.round(duration).toString());
+
+            const lrclibRes = await new Promise((resolve, reject) => {
+                https.get(searchUrl.toString(), {
+                    headers: { 'User-Agent': 'mwl-player/1.0.0 (https://github.com/your-repo)' }
+                }, (res) => {
+                    if (res.statusCode !== 200) {
+                        res.resume();
+                        return resolve(null);
+                    }
+                    let rawData = '';
+                    res.on('data', (chunk) => { rawData += chunk; });
+                    res.on('end', () => {
+                        try { resolve(JSON.parse(rawData)); }
+                        catch (e) { resolve(null); }
+                    });
+                }).on('error', reject);
+            });
+
+            if (lrclibRes) {
+                if (lrclibRes.syncedLyrics) return lrclibRes.syncedLyrics;
+                if (lrclibRes.plainLyrics) return lrclibRes.plainLyrics;
+            }
+        } catch (e) {
+            console.error('LRCLIB fetch failed', e);
+        }
+    }
+
+    return null;
 });
 
 // --- КЕШ МИНИАТЮР ОБЛОЖЕК ---

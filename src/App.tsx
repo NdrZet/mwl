@@ -17,6 +17,8 @@ import {
     Radio as RadioIcon,
     Clock,
     Mic2,
+    BarChart2,
+    Settings as SettingsIcon,
     type LucideIcon,
 } from 'lucide-react';
 import { ScrollArea } from './components/ui/scroll-area';
@@ -24,8 +26,12 @@ import { AlbumsGrid } from './components/AlbumsGrid';
 import { Podcasts } from './components/Podcasts';
 import { PodcastDetail } from './components/PodcastDetail';
 import { RadioPage } from './components/RadioPage';
+import { AlbumDetail } from './components/AlbumDetail';
+import { type AlbumInfo } from './components/AlbumsGrid';
+import { Settings } from './components/Settings';
+import { Stats } from './components/Stats';
 
-type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'podcasts' | 'podcastDetail' | 'radio';
+type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'albumDetail' | 'podcasts' | 'podcastDetail' | 'radio' | 'settings' | 'stats';
 
 // ── Sidebar navigation definition ─────────────────────────────────────────
 type NavItem = { id: View; label: string; icon: LucideIcon };
@@ -67,20 +73,24 @@ const SidebarItem = ({
 // ── Main layout (pure presenter: получает navigate/currentView сверху) ─────
 interface MainLayoutProps {
     currentView: View;
+    displayView: View;
     navigate: (v: View) => void;
     openedPodcastId: string | null;
     setOpenedPodcastId: (id: string | null) => void;
+    openedAlbum: AlbumInfo | null;
+    setOpenedAlbum: (album: AlbumInfo | null) => void;
     transitioning: boolean;
-    onAnimationEnd: (e: React.AnimationEvent<HTMLDivElement>) => void;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({
     currentView,
+    displayView,
     navigate,
     openedPodcastId,
     setOpenedPodcastId,
+    openedAlbum,
+    setOpenedAlbum,
     transitioning,
-    onAnimationEnd,
 }) => {
 
     const renderView = (view: View) => {
@@ -123,7 +133,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                     See all
                                 </button>
                             </div>
-                            <AlbumsGrid mode="recent" limit={4} />
+                            <AlbumsGrid mode="recent" limit={4} onAlbumClick={(album) => { setOpenedAlbum(album); navigate('albumDetail'); }} />
                         </div>
 
                         <div>
@@ -131,7 +141,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                 <Clock className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.35)' }} />
                                 <p className="vl-section-title" style={{ marginBottom: 0 }}>Recently Played</p>
                             </div>
-                            <TrackList showSearch={false} />
+                            <TrackList showSearch={false} disableScroll={true} />
                         </div>
                     </div>
                 );
@@ -143,7 +153,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                             <h1 className="vl-view-title">Search</h1>
                             <p className="vl-view-subtitle">Find your music</p>
                         </div>
-                        <TrackList />
+                        <TrackList disableScroll={true} />
                     </div>
                 );
 
@@ -154,7 +164,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                             <h1 className="vl-view-title">Your Library</h1>
                             <p className="vl-view-subtitle">All your music in one place</p>
                         </div>
-                        <TrackList />
+                        <TrackList disableScroll={true} />
                     </div>
                 );
 
@@ -176,7 +186,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                             <h1 className="vl-view-title">Albums</h1>
                             <p className="vl-view-subtitle">Browse your collection</p>
                         </div>
-                        <AlbumsGrid mode="all" />
+                        <AlbumsGrid mode="all" onAlbumClick={(album) => { setOpenedAlbum(album); navigate('albumDetail'); }} />
+                    </div>
+                );
+
+            case 'albumDetail':
+                return (
+                    <div className="space-y-5">
+                        <AlbumDetail album={openedAlbum} onBack={() => navigate('albums')} />
                     </div>
                 );
 
@@ -238,12 +255,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                 <p className="vl-view-subtitle">Your favorite tracks</p>
                             </div>
                         </div>
-                        <TrackList showSearch={false} />
+                        <TrackList showSearch={false} disableScroll={true} />
                     </div>
                 );
 
+            case 'settings':
+                return <Settings />;
+                
+            case 'stats':
+                return <Stats />;
+
             default:
-                return <TrackList />;
+                return <TrackList disableScroll={true} />;
         }
     };
 
@@ -273,13 +296,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                     ))}
                 </nav>
 
-                <div className="vl-sidebar-footer">
+                <div className="vl-sidebar-footer flex flex-col gap-1">
                     <SidebarItem
                         item={{ id: 'upload', label: 'Upload Music', icon: Upload }}
                         active={currentView === 'upload'}
                         onClick={() => navigate('upload')}
                     />
-                    <span className="vl-sidebar-version">Z Music v3.0</span>
+                    <SidebarItem
+                        item={{ id: 'stats', label: 'Listening Stats', icon: BarChart2 }}
+                        active={currentView === 'stats'}
+                        onClick={() => navigate('stats')}
+                    />
+                    <SidebarItem
+                        item={{ id: 'settings', label: 'Settings', icon: SettingsIcon }}
+                        active={currentView === 'settings'}
+                        onClick={() => navigate('settings')}
+                    />
+                    <div className="mt-2 text-center">
+                        <span className="vl-sidebar-version">Z Music v3.0</span>
+                    </div>
                 </div>
             </aside>
 
@@ -287,10 +322,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <ScrollArea className="flex-1">
                 <div className="relative overflow-hidden contain-paint" style={{ padding: '36px 44px' }}>
                     <div
-                        className={`relative will-change-transform ${transitioning ? 'elevate-in-up' : ''}`}
-                        onAnimationEnd={onAnimationEnd}
+                        className={`relative will-change-transform transition-all duration-150 ease-in-out ${transitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}
                     >
-                        {renderView(currentView)}
+                        {renderView(displayView)}
                     </div>
                 </div>
             </ScrollArea>
@@ -301,7 +335,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 // ── App root ──────────────────────────────────────────────────────────────
 export default function App() {
     const [currentView, setCurrentView]             = useState<View>('home');
+    const [displayView, setDisplayView]             = useState<View>('home');
     const [openedPodcastId, setOpenedPodcastId]     = useState<string | null>(null);
+    const [openedAlbum, setOpenedAlbum]             = useState<AlbumInfo | null>(null);
     const [transitioning, setTransitioning]         = useState(false);
     const transitionTimeoutRef                      = useRef<number | null>(null);
 
@@ -311,18 +347,10 @@ export default function App() {
         setTransitioning(true);
         if (transitionTimeoutRef.current) window.clearTimeout(transitionTimeoutRef.current);
         transitionTimeoutRef.current = window.setTimeout(() => {
+            setDisplayView(next);
             setTransitioning(false);
             transitionTimeoutRef.current = null;
-        }, 420);
-    };
-
-    const handleEnterAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
-        if (e.target !== e.currentTarget) return;
-        setTransitioning(false);
-        if (transitionTimeoutRef.current) {
-            window.clearTimeout(transitionTimeoutRef.current);
-            transitionTimeoutRef.current = null;
-        }
+        }, 150);
     };
 
     return (
@@ -386,11 +414,13 @@ export default function App() {
                 <div className="flex-1 flex overflow-hidden">
                     <MainLayout
                         currentView={currentView}
+                        displayView={displayView}
                         navigate={navigate}
                         openedPodcastId={openedPodcastId}
                         setOpenedPodcastId={setOpenedPodcastId}
+                        openedAlbum={openedAlbum}
+                        setOpenedAlbum={setOpenedAlbum}
                         transitioning={transitioning}
-                        onAnimationEnd={handleEnterAnimationEnd}
                     />
                 </div>
 

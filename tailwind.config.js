@@ -9,6 +9,9 @@ export default {
     ],
     theme: {
         extend: {
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
             // Здесь мы говорим Tailwind, как называть ваши цвета.
             // Например, "цвет 'primary' - это то, что лежит в переменной --primary".
             colors: {
