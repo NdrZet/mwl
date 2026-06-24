@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { FolderPlus, FolderOpen, Music, Trash2 } from "lucide-react";
+import { FolderPlus, FolderOpen, Music, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { useMusicContext } from "./MusicContext";
 import { toast } from "sonner";
@@ -89,6 +89,29 @@ export const FileUpload: React.FC = () => {
     toast.success("Folder removed from library");
   };
 
+  const handleRescanFolder = async (folderPath: string) => {
+    if (!window.electronAPI) return;
+    setIsScanning(true);
+    toast.loading(`Rescanning ${folderPath}...`, { id: 'scan-toast' });
+    try {
+      const audioFiles = await window.electronAPI.scanFolder(folderPath);
+      if (audioFiles.length > 0) {
+        const newFolders = folders.map(f => f.path === folderPath ? { ...f, count: audioFiles.length } : f);
+        setFolders(newFolders);
+        await saveFoldersToSettings(newFolders);
+        await addTracks(audioFiles);
+        toast.success(`Rescanned! Found ${audioFiles.length} files total.`, { id: 'scan-toast' });
+      } else {
+        toast.error(`No audio files found in ${folderPath}`, { id: 'scan-toast' });
+      }
+    } catch (e) {
+      console.error('Failed to rescan folder', e);
+      toast.error("An error occurred while rescanning the folder", { id: 'scan-toast' });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   // Browser fallback for selecting individual files
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -172,18 +195,29 @@ export const FileUpload: React.FC = () => {
                   {folder.path}
                 </div>
               </div>
-              <div className="folder-card-footer">
-                <span className="folder-card-count flex items-center gap-1.5">
+              <div className="folder-card-footer flex justify-between items-center mt-3 pt-3 border-t border-border/40">
+                <span className="folder-card-count flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Music className="w-3.5 h-3.5 opacity-70" />
                   {folder.count} tracks
                 </span>
-                <button 
-                  className="folder-card-remove flex items-center gap-1"
-                  onClick={() => handleRemoveFolder(folder.path)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Remove
-                </button>
+                <div className="flex items-center gap-3">
+                  <button 
+                    className="folder-card-remove flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                    onClick={() => handleRescanFolder(folder.path)}
+                    disabled={isScanning}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+                    Rescan
+                  </button>
+                  <button 
+                    className="folder-card-remove flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                    onClick={() => handleRemoveFolder(folder.path)}
+                    disabled={isScanning}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Remove
+                  </button>
+                </div>
               </div>
             </div>
           ))}

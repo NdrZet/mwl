@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
     getCoverPath: (filePath) => ipcRenderer.invoke('get-cover-path', filePath),
     getLyrics: (filePath) => ipcRenderer.invoke('get-lyrics', filePath),
+    translateLyrics: (text, lang) => ipcRenderer.invoke('translate-lyrics', text, lang),
+    getArtistInfo: (name) => ipcRenderer.invoke('get-artist-info', name),
     // Podcasts
     podcastsGetAll: () => ipcRenderer.invoke('podcasts:getAll'),
     podcastsAddByUrl: (feedUrl) => ipcRenderer.invoke('podcasts:addByUrl', feedUrl),

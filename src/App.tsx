@@ -19,10 +19,13 @@ import {
     Mic2,
     BarChart2,
     Settings as SettingsIcon,
+    Users,
     type LucideIcon,
 } from 'lucide-react';
 import { ScrollArea } from './components/ui/scroll-area';
 import { AlbumsGrid } from './components/AlbumsGrid';
+import { ArtistsGrid, type ArtistInfo } from './components/ArtistsGrid';
+import { ArtistDetail } from './components/ArtistDetail';
 import { Podcasts } from './components/Podcasts';
 import { PodcastDetail } from './components/PodcastDetail';
 import { RadioPage } from './components/RadioPage';
@@ -31,7 +34,7 @@ import { type AlbumInfo } from './components/AlbumsGrid';
 import { Settings } from './components/Settings';
 import { Stats } from './components/Stats';
 
-type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'albumDetail' | 'podcasts' | 'podcastDetail' | 'radio' | 'settings' | 'stats';
+type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'albumDetail' | 'artists' | 'artistDetail' | 'podcasts' | 'podcastDetail' | 'radio' | 'settings' | 'stats';
 
 // ── Sidebar navigation definition ─────────────────────────────────────────
 type NavItem = { id: View; label: string; icon: LucideIcon };
@@ -45,6 +48,7 @@ const NAV_COLLECTION: NavItem[] = [
     { id: 'liked',     label: 'Liked Songs', icon: Heart     },
     { id: 'playlists', label: 'Playlists',   icon: ListMusic },
     { id: 'albums',    label: 'Albums',      icon: Music     },
+    { id: 'artists',   label: 'Artists',     icon: Users     },
 ];
 const NAV_DISCOVER: NavItem[] = [
     { id: 'radio',    label: 'Radio',    icon: RadioIcon },
@@ -79,6 +83,8 @@ interface MainLayoutProps {
     setOpenedPodcastId: (id: string | null) => void;
     openedAlbum: AlbumInfo | null;
     setOpenedAlbum: (album: AlbumInfo | null) => void;
+    openedArtist: ArtistInfo | null;
+    setOpenedArtist: (artist: ArtistInfo | null) => void;
     transitioning: boolean;
 }
 
@@ -90,6 +96,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     setOpenedPodcastId,
     openedAlbum,
     setOpenedAlbum,
+    openedArtist,
+    setOpenedArtist,
     transitioning,
 }) => {
 
@@ -194,6 +202,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 return (
                     <div className="space-y-5">
                         <AlbumDetail album={openedAlbum} onBack={() => navigate('albums')} />
+                    </div>
+                );
+
+            case 'artists':
+                return (
+                    <div className="space-y-5">
+                        <div>
+                            <h1 className="vl-view-title">Artists</h1>
+                            <p className="vl-view-subtitle">Browse your collection by artist</p>
+                        </div>
+                        <ArtistsGrid mode="all" onArtistClick={(artist) => { setOpenedArtist(artist); navigate('artistDetail'); }} />
+                    </div>
+                );
+
+            case 'artistDetail':
+                return (
+                    <div className="space-y-5">
+                        <ArtistDetail artist={openedArtist} onBack={() => navigate('artists')} />
                     </div>
                 );
 
@@ -338,6 +364,7 @@ export default function App() {
     const [displayView, setDisplayView]             = useState<View>('home');
     const [openedPodcastId, setOpenedPodcastId]     = useState<string | null>(null);
     const [openedAlbum, setOpenedAlbum]             = useState<AlbumInfo | null>(null);
+    const [openedArtist, setOpenedArtist] = useState<ArtistInfo | null>(null);
     const [transitioning, setTransitioning]         = useState(false);
     const transitionTimeoutRef                      = useRef<number | null>(null);
 
@@ -420,6 +447,8 @@ export default function App() {
                         setOpenedPodcastId={setOpenedPodcastId}
                         openedAlbum={openedAlbum}
                         setOpenedAlbum={setOpenedAlbum}
+                        openedArtist={openedArtist}
+                        setOpenedArtist={setOpenedArtist}
                         transitioning={transitioning}
                     />
                 </div>

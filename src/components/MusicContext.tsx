@@ -33,8 +33,10 @@ declare global {
       loadTracks: () => Promise<Track[]>;
       saveTracks: (tracks: Track[]) => void;
       getMetadata: (filePath: string) => Promise<{ title: string, artist: string, album: string, duration: number, cover: string | null }>;
-      getCoverPath: (filePath: string) => Promise<string | null>;
+      getCoverPath?: (filePath: string) => Promise<string | null>;
       getLyrics?: (filePath: string) => Promise<string | null>;
+      translateLyrics?: (text: string, lang: string) => Promise<string | null>;
+      getArtistInfo?: (name: string) => Promise<{ banner: string | null; thumb: string | null; biographyEN: string | null; biographyRU: string | null; genre: string | null } | null>;
       podcastsGetAll?: () => Promise<any[]>;
       podcastsAddByUrl?: (feedUrl: string) => Promise<{ ok: boolean; error?: string }>;
       podcastsRefreshAll?: () => Promise<{ ok: boolean; error?: string }>;

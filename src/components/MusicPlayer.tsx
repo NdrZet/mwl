@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward,
-  Volume2, Volume1, VolumeX, Music, ChevronDown, Maximize2,
+  Volume2, Volume1, VolumeX, Music, ChevronDown, Maximize2, Globe, Loader2
 } from 'lucide-react';
 import { useMusicContext } from './MusicContext';
 import { parseLRC, type LyricLine } from '../utils/lrcParser';
@@ -135,6 +135,9 @@ export const MusicPlayer: React.FC = () => {
   const prevTrackIdRef = useRef<string | null>(null);
 
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
+  const [translatedLyrics, setTranslatedLyrics] = useState<string[]>([]);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   
   const [isManualScrolling, setIsManualScrolling] = useState(false);
@@ -169,16 +172,60 @@ export const MusicPlayer: React.FC = () => {
   };
 
   useEffect(() => {
+    let isCancelled = false;
+
     if (!currentTrack || !window.electronAPI?.getLyrics) {
       setLyrics([]);
+      setTranslatedLyrics([]);
+      setShowTranslation(false);
       return;
     }
+
+    // Очищаем старые данные сразу при смене трека
+    setLyrics([]);
+    setTranslatedLyrics([]);
+    setShowTranslation(false);
+
     // Fetch lyrics asynchronously
     window.electronAPI.getLyrics(currentTrack.path).then((text) => {
+      if (isCancelled) return;
       setLyrics(parseLRC(text || ''));
       setIsManualScrolling(false); // Reset manual scrolling on new track
-    }).catch(() => setLyrics([]));
+    }).catch(() => { 
+      if (isCancelled) return;
+      setLyrics([]); 
+    });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [currentTrack]);
+
+  const toggleTranslation = async () => {
+    if (showTranslation) {
+      setShowTranslation(false);
+      return;
+    }
+    if (translatedLyrics.length > 0) {
+      setShowTranslation(true);
+      return;
+    }
+    if (lyrics.length === 0 || !window.electronAPI?.translateLyrics) return;
+    
+    setIsTranslating(true);
+    try {
+      const textToTranslate = lyrics.map(l => l.text).join('\n');
+      const translated = await window.electronAPI.translateLyrics(textToTranslate, 'ru');
+      if (translated) {
+        setTranslatedLyrics(translated.split('\n'));
+        setShowTranslation(true);
+      }
+    } catch (e) {
+      console.error('Translation failed', e);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   // Auto-scroll lyrics
   useEffect(() => {
@@ -457,8 +504,8 @@ export const MusicPlayer: React.FC = () => {
               <div 
                 className="relative rounded-2xl overflow-hidden shadow-2xl mb-6 flex-shrink-0"
                 style={{
-                  width: lyrics.length > 0 ? (isFsIdle ? 'min(500px, 65vh)' : 'min(320px, 40vh)') : 'min(380px, 50vh)',
-                  height: lyrics.length > 0 ? (isFsIdle ? 'min(500px, 65vh)' : 'min(320px, 40vh)') : 'min(380px, 50vh)',
+                  width: isFsIdle ? 'min(500px, 65vh)' : (lyrics.length > 0 ? 'min(320px, 40vh)' : 'min(400px, 55vh)'),
+                  height: isFsIdle ? 'min(500px, 65vh)' : (lyrics.length > 0 ? 'min(320px, 40vh)' : 'min(400px, 55vh)'),
                   boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 0 40px rgba(50,184,198,0.15)',
                   opacity: fsVisible ? 1 : 0,
                   transform: fsVisible ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.96)',
@@ -483,7 +530,7 @@ export const MusicPlayer: React.FC = () => {
               <div 
                 className="w-full flex flex-col items-center overflow-hidden transition-all duration-700 ease-in-out"
                 style={{
-                  maxHeight: (isFsIdle && lyrics.length > 0) ? '0px' : '400px',
+                  maxHeight: isFsIdle ? '0px' : '400px',
                   opacity: (fsVisible && !isFsIdle) ? 1 : 0,
                   pointerEvents: isFsIdle ? 'none' : 'auto'
                 }}
@@ -534,28 +581,44 @@ export const MusicPlayer: React.FC = () => {
 
                 {/* ── Playback controls ─────────────────── */}
                 <div
-                  className="flex items-center gap-5 mt-6"
+                  className="relative flex items-center justify-center w-full max-w-[85%] sm:max-w-md mt-6 mx-auto"
                   style={{
                     transform:  (fsVisible && !isFsIdle) ? 'translateY(0)' : 'translateY(8px)',
                     transition: 'transform 0.4s ease',
                   }}
                 >
-                  <button className="player-fs-btn" onClick={previous} aria-label="Назад">
-                    <SkipBack className="h-6 w-6" />
-                  </button>
-                  <button
-                    className="player-fs-play"
-                    onClick={togglePlay}
-                    aria-label={isPlaying ? 'Пауза' : 'Играть'}
-                  >
-                    {isPlaying
-                      ? <Pause className="h-7 w-7" />
-                      : <Play  className="h-7 w-7 translate-x-0.5" />
-                    }
-                  </button>
-                  <button className="player-fs-btn" onClick={next} aria-label="Вперёд">
-                    <SkipForward className="h-6 w-6" />
-                  </button>
+                  <div className="flex items-center gap-5">
+                    <button className="player-fs-btn" onClick={previous} aria-label="Назад">
+                      <SkipBack className="h-6 w-6" />
+                    </button>
+                    <button
+                      className="player-fs-play"
+                      onClick={togglePlay}
+                      aria-label={isPlaying ? 'Пауза' : 'Играть'}
+                    >
+                      {isPlaying
+                        ? <Pause className="h-7 w-7" />
+                        : <Play  className="h-7 w-7 translate-x-0.5" />
+                      }
+                    </button>
+                    <button className="player-fs-btn" onClick={next} aria-label="Вперёд">
+                      <SkipForward className="h-6 w-6" />
+                    </button>
+                  </div>
+                  
+                  {lyrics.length > 0 && (
+                    <div className="absolute right-0">
+                      <button 
+                        className="player-fs-btn" 
+                        onClick={toggleTranslation} 
+                        disabled={isTranslating}
+                        style={{ opacity: showTranslation || isTranslating ? 1 : 0.4 }}
+                        aria-label="Перевод текста"
+                      >
+                        {isTranslating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Globe className="h-6 w-6" />}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Volume ────────────────────────────── */}
@@ -582,38 +645,61 @@ export const MusicPlayer: React.FC = () => {
             {/* ── Right Side: Lyrics ── */}
             {lyrics.length > 0 && (
               <div 
-                className="flex-1 w-full h-full max-h-[60vh] max-w-2xl overflow-y-auto scrollbar-hide relative mask-linear-fade hidden lg:block"
-                ref={lyricsContainerRef}
-                onWheel={handleUserScroll}
-                onTouchMove={handleUserScroll}
+                className="flex-1 relative hidden lg:block w-full max-w-2xl"
                 style={{
                   opacity: fsVisible ? 1 : 0,
                   transform: fsVisible ? 'translateX(0)' : 'translateX(16px)',
                   transition: 'opacity 0.4s ease 0.2s, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) 0.2s',
-                  // Fade edges
-                  maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
                 }}
               >
-                <div className="py-[30vh]">
-                  {lyrics.map((line, idx) => {
-                    // Check if current line is active
-                    const isActive = currentTime >= line.time && (idx === lyrics.length - 1 || currentTime < lyrics[idx + 1].time);
-                    return (
-                      <p 
-                        key={idx}
-                        data-index={idx}
-                        className={`px-8 -mx-8 py-4 -mt-4 text-2xl md:text-3xl lg:text-4xl font-bold mb-8 transition-all duration-500 ease-out origin-left cursor-pointer
-                          ${isActive ? 'text-white scale-[1.05] [text-shadow:0_0_25px_rgba(255,255,255,0.6)]' : 'text-white/30 hover:text-white/50'}
-                        `}
-                        onClick={() => {
-                          if (line.time >= 0) seek(line.time);
-                        }}
-                      >
-                        {line.text}
-                      </p>
-                    )
-                  })}
+                <div 
+                  className="w-full h-full max-h-[60vh] overflow-y-auto scrollbar-hide mask-linear-fade px-12 -mx-12"
+                  ref={lyricsContainerRef}
+                  onWheel={handleUserScroll}
+                  onTouchMove={handleUserScroll}
+                  style={{
+                    // Fade edges
+                    maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
+                    // Hardware acceleration to fix WebKit mask rendering glitches
+                    transform: 'translateZ(0)',
+                    willChange: 'transform, scroll-position'
+                  }}
+                >
+                  <div className="py-[30vh]">
+                    {lyrics.map((line, idx) => {
+                      // Check if current line is active
+                      const isActive = currentTime >= line.time && (idx === lyrics.length - 1 || currentTime < lyrics[idx + 1].time);
+                      const translatedLine = translatedLyrics[idx];
+                      return (
+                        <div 
+                          key={idx}
+                          data-index={idx}
+                          className={`mb-8 cursor-pointer py-4 -mt-4 transition-all duration-500 ease-out origin-left
+                            ${isActive ? 'scale-[1.05]' : ''}
+                          `}
+                          onClick={() => { if (line.time >= 0) seek(line.time); }}
+                        >
+                          <p 
+                            className={`text-2xl md:text-3xl lg:text-4xl font-bold transition-all duration-500 ease-out
+                              ${isActive ? 'text-white [text-shadow:0_0_25px_rgba(255,255,255,0.6)]' : 'text-white/30 hover:text-white/50'}
+                            `}
+                          >
+                            {line.text}
+                          </p>
+                          {translatedLine && showTranslation && (
+                            <p 
+                              className={`mt-1 text-lg md:text-xl font-medium transition-all duration-500 ease-out
+                                ${isActive ? 'text-white/90' : 'text-white/20 hover:text-white/40'}
+                              `}
+                            >
+                              {translatedLine}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             )}

@@ -456,6 +456,33 @@ ipcMain.handle('get-lyrics', async (event, filePath) => {
     return null;
 });
 
+// Команда "Переведи текст"
+ipcMain.handle('translate-lyrics', async (event, text, targetLang = 'ru') => {
+    try {
+        const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `q=${encodeURIComponent(text)}`
+        });
+        
+        if (!response.ok) return null;
+        const data = await response.json();
+        
+        // Google Translate returns an array of segments in data[0]
+        // data[0][i][0] is the translated segment
+        if (data && data[0] && Array.isArray(data[0])) {
+            const translatedText = data[0].map(segment => segment[0]).join('');
+            return translatedText;
+        }
+        return null;
+    } catch (e) {
+        console.error('Translation failed', e);
+        return null;
+    }
+});
+
 // --- КЕШ МИНИАТЮР ОБЛОЖЕК ---
 const coversDir = path.join(userDataPath, 'covers');
 function ensureCoversDir() {
@@ -698,6 +725,39 @@ ipcMain.handle('podcasts:remove', async (event, podcastId) => {
         return { ok: true };
     } catch (e) {
         return { ok: false, error: String(e && e.message || e) };
+    }
+});
+
+// --- THEAUDIODB IPC ---
+ipcMain.handle('get-artist-info', async (event, artistName) => {
+    try {
+        if (!artistName) return null;
+        const response = await fetch(`https://www.theaudiodb.com/api/v1/json/2/search.php?s=${encodeURIComponent(artistName)}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        
+        let artist = null;
+        if (data?.artists?.length > 0) {
+            // Пытаемся найти точное совпадение имени (без учета регистра)
+            artist = data.artists.find(a => a.strArtist && a.strArtist.toLowerCase() === artistName.toLowerCase());
+            // Если точного совпадения нет, берем первый результат
+            if (!artist) {
+                artist = data.artists[0];
+            }
+        }
+
+        if (!artist) return null;
+        
+        return {
+            banner: artist.strArtistFanart || artist.strArtistBanner || artist.strArtistWideThumb || null,
+            thumb: artist.strArtistThumb || null,
+            biographyEN: artist.strBiographyEN || null,
+            biographyRU: artist.strBiographyRU || null,
+            genre: artist.strGenre || null,
+        };
+    } catch (e) {
+        console.error('Failed to fetch artist info from TheAudioDB:', e);
+        return null;
     }
 });
 
