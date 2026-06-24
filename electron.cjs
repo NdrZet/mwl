@@ -294,6 +294,43 @@ ipcMain.handle('select-files', async () => {
     return result.filePaths;
 });
 
+ipcMain.handle('select-folders', async () => {
+    const result = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'multiSelections']
+    });
+    if (result.canceled) return [];
+    return result.filePaths;
+});
+
+function walkDirSync(dir, fileList = []) {
+    try {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+            const filePath = path.join(dir, file);
+            try {
+                const stat = fs.statSync(filePath);
+                if (stat.isDirectory()) {
+                    walkDirSync(filePath, fileList);
+                } else {
+                    const ext = path.extname(file).toLowerCase();
+                    if (['.mp3','.wav','.ogg','.m4a','.flac','.aac'].includes(ext)) {
+                        fileList.push(filePath);
+                    }
+                }
+            } catch (err) {
+                // Ignore permission or stat errors
+            }
+        }
+    } catch (err) {
+        // Ignore errors reading dir
+    }
+    return fileList;
+}
+
+ipcMain.handle('scan-folder', async (event, folderPath) => {
+    return walkDirSync(folderPath);
+});
+
 // Команда "Получи метаданные"
 ipcMain.handle('get-metadata', async (event, filePath) => {
     try {

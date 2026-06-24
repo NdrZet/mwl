@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     saveTracks: (tracks) => ipcRenderer.send('save-tracks', tracks),
     getMetadata: (filePath) => ipcRenderer.invoke('get-metadata', filePath),
     selectFiles: () => ipcRenderer.invoke('select-files'),
+    selectFolders: () => ipcRenderer.invoke('select-folders'),
+    scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
     getCoverPath: (filePath) => ipcRenderer.invoke('get-cover-path', filePath),
     getLyrics: (filePath) => ipcRenderer.invoke('get-lyrics', filePath),
     // Podcasts

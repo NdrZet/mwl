@@ -39,6 +39,8 @@ declare global {
       podcastsAddByUrl?: (feedUrl: string) => Promise<{ ok: boolean; error?: string }>;
       podcastsRefreshAll?: () => Promise<{ ok: boolean; error?: string }>;
       podcastsRemove?: (podcastId: string) => Promise<{ ok: boolean; error?: string }>;
+      selectFolders?: () => Promise<string[]>;
+      scanFolder?: (folderPath: string) => Promise<string[]>;
       // radio
       radioGetAll?: () => Promise<RadioStation[]>;
       radioSaveAll?: (stations: RadioStation[]) => Promise<{ ok: boolean; error?: string }>;
@@ -56,7 +58,10 @@ declare global {
 export interface MusicContextType {
   tracks: Track[];
   addTrack: (file: File) => Promise<void>;
+  addTracks: (paths: string[]) => Promise<void>;
   removeTrack: (id: string) => void;
+  removeTracksByFolder: (folderPath: string) => void;
+  clearLibrary: () => void;
   playlists: Playlist[];
   createPlaylist: (name: string) => void;
   deletePlaylist: (id: string) => void;
@@ -389,6 +394,79 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const removeTracksByFolder = (folderPath: string) => {
+    // We filter out tracks whose path starts with the folderPath
+    setTracks(prev => {
+      const remainingTracks = prev.filter(t => {
+        // If track doesn't have a path, keep it. Otherwise, check if it starts with folderPath.
+        // Convert to lowercase or handle OS path separator differences if needed, 
+        // but simple startsWith is often enough for Electron.
+        if (!t.path) return true;
+        // Normalizing separators to compare
+        const normTrackPath = t.path.replace(/\\/g, '/');
+        const normFolderPath = folderPath.replace(/\\/g, '/');
+        return !normTrackPath.startsWith(normFolderPath);
+      });
+      return remainingTracks;
+    });
+    // We should also clean up playlists, removing tracks that are no longer in the Library.
+    // However, since we rely on `tracks` array for library, and playlists refer to IDs, 
+    // it's safer to remove invalid IDs from playlists too.
+    setPlaylists(prevPlaylists => prevPlaylists.map(p => ({
+      ...p,
+      // this is a bit tricky as we need the NEW tracks list to know valid IDs.
+      // We can do it in a useEffect that watches `tracks` and removes orphans, 
+      // or just do it here using the same condition.
+    })));
+  };
+
+  const clearLibrary = () => {
+    setTracks([]);
+    setPlaylists([]);
+    pause();
+    setCurrentTrack(null);
+  };
+
+  const addTracks = async (paths: string[]) => {
+    if (!window.electronAPI) return;
+    
+    // Filter out already existing paths
+    const newPaths = paths.filter(p => !tracks.some(t => t.path === p));
+    if (newPaths.length === 0) return;
+
+    // To prevent freezing, we process in chunks
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < newPaths.length; i += CHUNK_SIZE) {
+      const chunk = newPaths.slice(i, i + CHUNK_SIZE);
+      const newTracksChunk: Track[] = [];
+
+      for (const filePath of chunk) {
+        try {
+          const metadata = await window.electronAPI.getMetadata(filePath);
+          const coverPath = await window.electronAPI.getCoverPath(filePath);
+          newTracksChunk.push({
+            id: generateTrackId(),
+            name: metadata.title,
+            artist: metadata.artist,
+            album: metadata.album,
+            duration: metadata.duration,
+            cover: coverPath || metadata.cover,
+            path: filePath,
+          });
+        } catch (e) {
+          console.error(`Failed to add track ${filePath}`, e);
+        }
+      }
+
+      if (newTracksChunk.length > 0) {
+        setTracks(prev => [...prev, ...newTracksChunk]);
+      }
+      
+      // Yield to event loop to keep UI responsive
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  };
+
   // --- ИСПРАВЛЕННАЯ УНИВЕРСАЛЬНАЯ ФУНКЦИЯ PLAY ---
   const play = async (track?: Track) => {
     const isElectron = !!window.electronAPI;
@@ -487,7 +565,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const contextValue: MusicContextType = {
-    tracks, addTrack, removeTrack, playlists, createPlaylist, deletePlaylist, addToPlaylist, removeFromPlaylist,
+    tracks, addTrack, addTracks, removeTrack, removeTracksByFolder, clearLibrary, playlists, createPlaylist, deletePlaylist, addToPlaylist, removeFromPlaylist,
     currentTrack, isPlaying, currentTime, duration, volume, play, pause, togglePlay, next, previous, seek, setVolume,
     queue, setQueue, currentQueueIndex,
     radioStations,
