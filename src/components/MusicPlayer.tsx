@@ -603,8 +603,8 @@ export const MusicPlayer: React.FC = () => {
                       <p 
                         key={idx}
                         data-index={idx}
-                        className={`text-2xl md:text-3xl lg:text-4xl font-bold mb-8 transition-all duration-500 ease-out origin-left cursor-pointer
-                          ${isActive ? 'text-white scale-[1.05] drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' : 'text-white/30 hover:text-white/50'}
+                        className={`px-8 -mx-8 py-4 -mt-4 text-2xl md:text-3xl lg:text-4xl font-bold mb-8 transition-all duration-500 ease-out origin-left cursor-pointer
+                          ${isActive ? 'text-white scale-[1.05] [text-shadow:0_0_25px_rgba(255,255,255,0.6)]' : 'text-white/30 hover:text-white/50'}
                         `}
                         onClick={() => {
                           if (line.time >= 0) seek(line.time);

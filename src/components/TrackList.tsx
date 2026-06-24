@@ -54,6 +54,9 @@ export const TrackList: React.FC<TrackListProps> = ({
   const [menuFor, setMenuFor] = useState<{ id: string; x: number; y: number } | null>(null);
   const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
 
+  const [visibleCount, setVisibleCount] = useState(50);
+  const observerTarget = React.useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuFor(null); };
     const onClick = (e: MouseEvent) => {
@@ -90,6 +93,23 @@ export const TrackList: React.FC<TrackListProps> = ({
       track.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 50, filteredTracks.length));
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    if (observerTarget.current) observer.observe(observerTarget.current);
+    return () => observer.disconnect();
+  }, [filteredTracks.length]);
 
   const handlePlayTrack = (track: Track) => {
     if (currentTrack?.id === track.id) {
@@ -150,7 +170,7 @@ export const TrackList: React.FC<TrackListProps> = ({
                 </div>
 
                 {/* Track List */}
-                {filteredTracks.map((track, index) => (
+                {filteredTracks.slice(0, visibleCount).map((track, index) => (
                     <div
                         key={track.id}
                         className={`grid grid-cols-12 gap-4 px-4 py-3 rounded-md hover:bg-muted/50 group transition-colors ${
@@ -233,6 +253,9 @@ export const TrackList: React.FC<TrackListProps> = ({
                       </div>
                     </div>
                 ))}
+                {visibleCount < filteredTracks.length && (
+                    <div ref={observerTarget} className="h-10 w-full" />
+                )}
     </div>
   );
 

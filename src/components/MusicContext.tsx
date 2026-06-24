@@ -142,18 +142,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return { ...t, id } as Track;
         });
 
-        // Миграция обложек: если cover пустой или это старый file://, переизвлекаем cover из метаданных
-        const withCovers = await Promise.all(
-          normalized.map(async (t) => {
-            if (!t.cover && t.path) {
-              try {
-                const p = await window.electronAPI!.getCoverPath(t.path);
-                if (p) return { ...t, cover: p } as Track;
-              } catch {}
-            }
-            return t;
-          })
-        );
+        // Удаляем тяжеловесные Base64 обложки из памяти и tracks.json, если они там остались
+        const withCovers = normalized.map((t) => {
+          if (t.cover && t.cover.startsWith('data:image/')) {
+            return { ...t, cover: null } as Track;
+          }
+          return t;
+        });
 
         setTracks(withCovers);
       };
@@ -186,51 +181,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     tracksRef.current = tracks;
   }, [tracks]);
 
-  // Фоновая задача раз в 5 секунд: добираем обложки для треков без cover или со старым file:// cover
-  useEffect(() => {
-    const isElectron = !!window.electronAPI;
-    if (!isElectron) return;
-
-    const isRealFsPath = (p: string | undefined): boolean => {
-      if (!p) return false;
-      const l = p.toLowerCase();
-      return !l.startsWith('blob:') && !l.startsWith('data:') && !l.startsWith('http');
-    };
-
-    const interval = setInterval(async () => {
-      const snapshot = tracksRef.current;
-      if (!snapshot || snapshot.length === 0) return;
-
-      const now = Date.now();
-      const candidates: Track[] = [];
-      for (const t of snapshot) {
-        const needs = !t.cover; // не трогаем уже установленный cover (file:// или data:)
-        const allowed = isRealFsPath(t.path);
-        const last = lastCoverAttemptRef.current[t.id] ?? 0;
-        if (needs && allowed && (now - last > 60000)) {
-          candidates.push(t);
-          if (candidates.length >= 2) break; // ограничиваем нагрузку
-        }
-      }
-
-      if (candidates.length === 0) return;
-
-      const updates: Record<string, string> = {};
-      await Promise.all(candidates.map(async (t) => {
-        try {
-          lastCoverAttemptRef.current[t.id] = now;
-          const p = await window.electronAPI!.getCoverPath(t.path);
-          if (p) updates[t.id] = p;
-        } catch {}
-      }));
-
-      if (Object.keys(updates).length > 0) {
-        setTracks(prev => prev.map(t => updates[t.id] ? { ...t, cover: updates[t.id] } : t));
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Фоновые задачи сканирования обложек (setInterval) были удалены для снижения потребления ОЗУ и CPU.
 
   // Фоновая задача для трекинга времени (статистика)
   useEffect(() => {
@@ -366,15 +317,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (tracks.some(t => t.path === filePath)) return;
 
       const metadata = await window.electronAPI!.getMetadata(filePath);
-      // Путь к миниатюре-кешу (file://) — создадим при необходимости
-      const coverPath = await window.electronAPI!.getCoverPath(filePath);
       const newTrack: Track = {
         id: generateTrackId(),
         name: metadata.title,
         artist: metadata.artist,
         album: metadata.album,
         duration: metadata.duration,
-        cover: coverPath || metadata.cover,
+        cover: metadata.cover,
         path: filePath,
       };
       setTracks(prev => [...prev, newTrack]);
@@ -443,14 +392,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       for (const filePath of chunk) {
         try {
           const metadata = await window.electronAPI.getMetadata(filePath);
-          const coverPath = await window.electronAPI.getCoverPath(filePath);
           newTracksChunk.push({
             id: generateTrackId(),
             name: metadata.title,
             artist: metadata.artist,
             album: metadata.album,
             duration: metadata.duration,
-            cover: coverPath || metadata.cover,
+            cover: metadata.cover,
             path: filePath,
           });
         } catch (e) {

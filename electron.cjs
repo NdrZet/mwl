@@ -337,20 +337,28 @@ ipcMain.handle('get-metadata', async (event, filePath) => {
         // откат: всегда предполагаем реальный путь
         const metadata = await musicMetadata.parseFile(filePath);
         const { common } = metadata;
-        let cover = null;
-        if (common.picture && common.picture.length > 0) {
-            const picture = common.picture[0];
-            // Определяем корректный mime-тип, если не задан
-            let mimeType = picture.format;
-            if (!mimeType || !String(mimeType).startsWith('image/')) {
-                const header = picture.data.toString('hex', 0, 4).toUpperCase();
-                if (header.startsWith('FFD8')) mimeType = 'image/jpeg';
-                else if (header.startsWith('8950')) mimeType = 'image/png';
-                else if (header.startsWith('4749')) mimeType = 'image/gif';
-                else mimeType = 'image/jpeg';
+        
+        // Пункт 2: Извлекаем и кешируем обложку сразу, без повторного чтения файла
+        let coverPath = null;
+        try {
+            let buf = null;
+            if (common.picture && common.picture.length > 0) {
+                buf = Buffer.from(common.picture[0].data);
             }
-            // Возвращаем data: URI как раньше
-            cover = `data:${mimeType};base64,${picture.data.toString('base64')}`;
+            if (!buf) {
+                buf = tryFolderCoverSync(filePath);
+            }
+            if (buf) {
+                const png = resizeToPng(buf, 1024);
+                if (png) {
+                    coverPath = writeCover(png, '.png');
+                } else {
+                    const ext = sniffExt(buf);
+                    coverPath = writeCover(buf, ext);
+                }
+            }
+        } catch (e) {
+            console.error('Error saving cover in get-metadata:', e);
         }
 
         // Лучшие попытки получить корректные поля
@@ -364,7 +372,7 @@ ipcMain.handle('get-metadata', async (event, filePath) => {
             artist,
             album,
             duration,
-            cover,
+            cover: coverPath,
         };
     } catch (error) {
         console.error(`Failed to get metadata for: ${filePath}`, error);
