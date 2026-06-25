@@ -364,7 +364,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                         onClick={() => navigate('settings')}
                     />
                     <div className="mt-2 text-center">
-                        <span className="vl-sidebar-version">Z Music v3.0</span>
+                        <span className="vl-sidebar-version">Omni Project v3.0</span>
                     </div>
                 </div>
             </aside>
@@ -436,7 +436,7 @@ export default function App() {
                                 <circle cx="18" cy="16" r="3" />
                             </svg>
                         </div>
-                        <span className="vl-logo-text">Z Music</span>
+                        <span className="vl-logo-text">Omni Project</span>
                     </div>
 
                     {/* Search — кнопка-переход, текст вводится внутри страницы Search */}
