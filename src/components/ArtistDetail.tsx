@@ -9,6 +9,7 @@ import { type ArtistInfo } from './ArtistsGrid';
 interface ArtistDetailProps {
   artist: ArtistInfo | null;
   onBack: () => void;
+  onAlbumClick?: (album: any) => void;
 }
 
 interface ArtistApiData {
@@ -19,7 +20,7 @@ interface ArtistApiData {
   genre: string | null;
 }
 
-export const ArtistDetail: React.FC<ArtistDetailProps> = ({ artist, onBack }) => {
+export const ArtistDetail: React.FC<ArtistDetailProps> = ({ artist, onBack, onAlbumClick }) => {
   const { play, setQueue } = useMusicContext();
   const [apiData, setApiData] = useState<ArtistApiData | null>(null);
   const [loadingApi, setLoadingApi] = useState(false);
@@ -145,9 +146,32 @@ export const ArtistDetail: React.FC<ArtistDetailProps> = ({ artist, onBack }) =>
             {loadingApi && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
          </div>
 
+         {/* Biography was moved to bottom */}
+         
+         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+           {/* Popular Tracks */}
+           <div>
+             <h2 className="text-2xl font-bold mb-4">Популярное</h2>
+             {/* We sort artist.tracks by lastPlayedAt descending to simulate 'popular', or just take first 5 */}
+             <div className="-mx-2">
+               <TrackList 
+                 tracks={[...artist.tracks].sort((a,b) => (b.lastPlayedAt||0) - (a.lastPlayedAt||0)).slice(0, 5)} 
+                 showSearch={false} 
+                 disableScroll={true} 
+               />
+             </div>
+           </div>
+         </div>
+
+         {/* Albums/Releases */}
+         <div>
+           <h2 className="text-2xl font-bold mb-6">Альбомы и Синглы</h2>
+           <AlbumsGrid mode="all" limit={100} artistFilter={artist.name} onAlbumClick={onAlbumClick} />
+         </div>
+
          {/* Biography */}
          {(apiData?.biographyEN || apiData?.biographyRU) && (
-            <div className="max-w-4xl bg-white/5 rounded-2xl p-6 relative">
+            <div className="max-w-4xl bg-white/5 rounded-2xl p-6 relative mt-10">
               <h2 className="text-xl font-bold mb-3">Об исполнителе</h2>
               <div className={`relative ${!bioExpanded ? 'max-h-32 overflow-hidden' : ''}`}>
                 <p className="text-white/70 leading-relaxed text-sm whitespace-pre-wrap">
@@ -171,27 +195,6 @@ export const ArtistDetail: React.FC<ArtistDetailProps> = ({ artist, onBack }) =>
               </div>
             </div>
          )}
-         
-         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-           {/* Popular Tracks */}
-           <div>
-             <h2 className="text-2xl font-bold mb-4">Популярное</h2>
-             {/* We sort artist.tracks by lastPlayedAt descending to simulate 'popular', or just take first 5 */}
-             <div className="-mx-2">
-               <TrackList 
-                 tracks={[...artist.tracks].sort((a,b) => (b.lastPlayedAt||0) - (a.lastPlayedAt||0)).slice(0, 5)} 
-                 showSearch={false} 
-                 disableScroll={true} 
-               />
-             </div>
-           </div>
-         </div>
-
-         {/* Albums/Releases */}
-         <div>
-           <h2 className="text-2xl font-bold mb-6">Альбомы и Синглы</h2>
-           <AlbumsGrid mode="all" limit={100} artistFilter={artist.name} />
-         </div>
 
       </div>
     </div>

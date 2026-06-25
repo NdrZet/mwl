@@ -81,22 +81,6 @@ export const ArtistsGrid: React.FC<ArtistsGridProps> = ({ mode = 'recent', limit
                     <Users className="h-10 w-10 text-muted-foreground" />
                   </div>
                 )}
-                
-                {/* Play Button Overlay */}
-                <div className="absolute bottom-2 right-2 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10">
-                  <button 
-                    className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-xl hover:scale-105 active:scale-95 transition-transform"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (artist.tracks.length > 0) {
-                        setQueue(artist.tracks);
-                        play(artist.tracks[0]);
-                      }
-                    }}
-                  >
-                    <Play className="h-6 w-6 ml-1" fill="currentColor" />
-                  </button>
-                </div>
               </div>
               <div className="space-y-1">
                 <p className="font-bold truncate text-foreground">{artist.name}</p>

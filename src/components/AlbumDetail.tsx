@@ -8,9 +8,10 @@ import { type AlbumInfo } from './AlbumsGrid';
 interface AlbumDetailProps {
   album: AlbumInfo | null;
   onBack: () => void;
+  onArtistClick?: (artistName: string) => void;
 }
 
-export const AlbumDetail: React.FC<AlbumDetailProps> = ({ album, onBack }) => {
+export const AlbumDetail: React.FC<AlbumDetailProps> = ({ album, onBack, onArtistClick }) => {
   const { play, setQueue } = useMusicContext();
 
   if (!album) {
@@ -111,7 +112,12 @@ export const AlbumDetail: React.FC<AlbumDetailProps> = ({ album, onBack }) => {
             {album.name}
           </h1>
           <div className="flex items-center text-sm font-medium text-muted-foreground/90 gap-1.5 flex-wrap mb-4">
-            <span className="text-foreground font-bold">{album.artist}</span>
+            <button 
+                className="text-foreground font-bold hover:underline"
+                onClick={() => onArtistClick?.(album.artist)}
+            >
+                {album.artist}
+            </button>
             {yearText && <span>{yearText}</span>}
             <span>•</span>
             <span>{album.tracks.length} track{album.tracks.length !== 1 ? 's' : ''}</span>

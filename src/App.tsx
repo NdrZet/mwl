@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Toaster } from './components/ui/sonner';
-import { MusicProvider } from './components/MusicContext';
+import { MusicProvider, useMusicContext } from './components/MusicContext';
 import { MusicPlayer } from './components/MusicPlayer';
 import { FileUpload } from './components/FileUpload';
 import { TrackList } from './components/TrackList';
@@ -100,6 +100,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     setOpenedArtist,
     transitioning,
 }) => {
+
+    const { tracks } = useMusicContext();
+
+    useEffect(() => {
+        const viewport = document.querySelector('[data-slot="scroll-area-viewport"]');
+        if (viewport) {
+            viewport.scrollTo(0, 0);
+        }
+    }, [displayView, openedPodcastId, openedAlbum, openedArtist]);
 
     const renderView = (view: View) => {
         switch (view) {
@@ -201,7 +210,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             case 'albumDetail':
                 return (
                     <div className="space-y-5">
-                        <AlbumDetail album={openedAlbum} onBack={() => navigate('albums')} />
+                        <AlbumDetail 
+                            album={openedAlbum} 
+                            onBack={() => navigate('albums')} 
+                            onArtistClick={(artistName) => {
+                                const artistTracks = tracks.filter(t => t.artist?.toLowerCase().includes(artistName.toLowerCase()));
+                                setOpenedArtist({
+                                    name: artistName,
+                                    cover: artistTracks[0]?.cover || null,
+                                    tracks: artistTracks
+                                });
+                                navigate('artistDetail');
+                            }}
+                        />
                     </div>
                 );
 
@@ -219,7 +240,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             case 'artistDetail':
                 return (
                     <div className="space-y-5">
-                        <ArtistDetail artist={openedArtist} onBack={() => navigate('artists')} />
+                        <ArtistDetail 
+                            artist={openedArtist} 
+                            onBack={() => navigate('artists')} 
+                            onAlbumClick={(album) => { setOpenedAlbum(album); navigate('albumDetail'); }} 
+                        />
                     </div>
                 );
 
