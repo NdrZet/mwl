@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Pause, MoreHorizontal, Trash2, Plus, Music, Clock } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, Trash2, Plus, Music, Clock, Heart } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 // Убираем Radix-меню и делаем собственное всплывающее меню
@@ -46,7 +46,8 @@ export const TrackList: React.FC<TrackListProps> = ({
     removeTrack,
     playlists,
     addToPlaylist,
-    setQueue
+    setQueue,
+    toggleLike
   } = useMusicContext();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -236,6 +237,14 @@ export const TrackList: React.FC<TrackListProps> = ({
 
                       {/* More Options */}
                       <div className="col-span-1 flex items-center justify-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => { e.stopPropagation(); toggleLike(track.id); }}
+                        >
+                          <Heart className={`h-4 w-4 ${track.isLiked ? 'text-[var(--vl-theme-accent)]' : 'text-muted-foreground'}`} fill={track.isLiked ? 'currentColor' : 'none'} />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

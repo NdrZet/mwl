@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward,
-  Volume2, Volume1, VolumeX, Music, ChevronDown, Maximize2, Globe, Loader2
+  Volume2, Volume1, VolumeX, Music, ChevronDown, Maximize2, Globe, Loader2, Heart
 } from 'lucide-react';
 import { useMusicContext } from './MusicContext';
 import { parseLRC, type LyricLine } from '../utils/lrcParser';
@@ -124,7 +124,7 @@ const useWindowSize = () => {
 export const MusicPlayer: React.FC = () => {
   const {
     currentTrack, isPlaying, currentTime, duration, volume,
-    togglePlay, next, previous, seek, setVolume,
+    togglePlay, next, previous, seek, setVolume, toggleLike
   } = useMusicContext();
 
   const { w, h } = useWindowSize();
@@ -379,6 +379,17 @@ export const MusicPlayer: React.FC = () => {
                 {currentTrack.artist}
               </p>
             </div>
+
+            {/* Like button */}
+            {!isLive && (
+              <button
+                className={`flex-shrink-0 transition-colors ${currentTrack.isLiked ? 'text-[var(--vl-theme-accent)]' : 'text-sidebar-accent-foreground hover:text-white'}`}
+                onClick={() => toggleLike(currentTrack.id)}
+                aria-label="Like"
+              >
+                <Heart className="h-4 w-4" fill={currentTrack.isLiked ? 'currentColor' : 'none'} />
+              </button>
+            )}
 
             {/* EQ indicator */}
             {isPlaying && !isLive && (

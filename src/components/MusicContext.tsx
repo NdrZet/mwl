@@ -10,6 +10,7 @@ export interface Track {
   path: string; // В Electron - абсолютный путь к файлу, в браузере - Object URL
   cover: string | null; // Обложка в формате base64
   lastPlayedAt?: number;
+  isLiked?: boolean;
 }
 
 export interface Playlist {
@@ -89,6 +90,7 @@ export interface MusicContextType {
   addRadioStation: (station: Omit<RadioStation, 'id'>) => void;
   removeRadioStation: (id: string) => void;
   playRadioStation: (stationId: string) => void;
+  toggleLike: (trackId: string) => void;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
@@ -345,6 +347,10 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const toggleLike = (trackId: string) => {
+    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, isLiked: !t.isLiked } : t));
+  };
+
   const removeTracksByFolder = (folderPath: string) => {
     // We filter out tracks whose path starts with the folderPath
     setTracks(prev => {
@@ -519,6 +525,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     currentTrack, isPlaying, currentTime, duration, volume, play, pause, togglePlay, next, previous, seek, setVolume,
     queue, setQueue, currentQueueIndex,
     radioStations,
+    toggleLike,
     addRadioStation: (station) => {
       const withId: RadioStation = { id: generateTrackId(), name: station.name, url: station.url, image: station.image || null };
       setRadioStations(prev => {

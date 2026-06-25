@@ -42,10 +42,10 @@ type NavItem = { id: View; label: string; icon: LucideIcon };
 const NAV_PRIMARY: NavItem[] = [
     { id: 'home',    label: 'Home',         icon: Home    },
     { id: 'search',  label: 'Search',       icon: Search  },
-    { id: 'library', label: 'Your Library', icon: Library },
+    { id: 'library', label: 'Library',      icon: Library },
 ];
 const NAV_COLLECTION: NavItem[] = [
-    { id: 'liked',     label: 'Liked Songs', icon: Heart     },
+    { id: 'liked',     label: 'Liked',       icon: Heart     },
     { id: 'playlists', label: 'Playlists',   icon: ListMusic },
     { id: 'albums',    label: 'Albums',      icon: Music     },
     { id: 'artists',   label: 'Artists',     icon: Users     },
@@ -122,7 +122,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                     <div className="vl-quick-card-icon" style={{ background: 'linear-gradient(135deg,#32B8C6,#1A6873)' }}>
                                         <Heart className="h-5 w-5 text-white" />
                                     </div>
-                                    <span className="vl-quick-card-label">Liked Songs</span>
+                                    <span className="vl-quick-card-label">Liked</span>
                                 </button>
                                 <button className="vl-quick-card" onClick={() => navigate('playlists')}>
                                     <div className="vl-quick-card-icon" style={{ background: 'rgba(255,255,255,0.07)' }}>
@@ -134,7 +134,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                     <div className="vl-quick-card-icon" style={{ background: 'rgba(255,255,255,0.07)' }}>
                                         <Music className="h-5 w-5" style={{ color: 'rgba(255,255,255,0.6)' }} />
                                     </div>
-                                    <span className="vl-quick-card-label">Your Music</span>
+                                    <span className="vl-quick-card-label">Library</span>
                                 </button>
                             </div>
                         </div>
@@ -158,7 +158,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                 <Clock className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.35)' }} />
                                 <p className="vl-section-title" style={{ marginBottom: 0 }}>Recently Played</p>
                             </div>
-                            <TrackList showSearch={false} disableScroll={true} />
+                            <TrackList showSearch={false} disableScroll={true} tracks={tracks.filter(t => t.lastPlayedAt).sort((a, b) => b.lastPlayedAt! - a.lastPlayedAt!).slice(0, 50)} />
                         </div>
                     </div>
                 );
@@ -178,7 +178,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 return (
                     <div className="space-y-5">
                         <div>
-                            <h1 className="vl-view-title">Your Library</h1>
+                            <h1 className="vl-view-title">Library</h1>
                             <p className="vl-view-subtitle">All your music in one place</p>
                         </div>
                         <TrackList disableScroll={true} />
@@ -301,12 +301,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                             <div>
                                 <p className="vl-view-subtitle" style={{ marginBottom: '6px' }}>Playlist</p>
                                 <h1 style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.04em', background: 'linear-gradient(135deg,#A8EFEF 0%,#7DDDE8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                                    Liked Songs
+                                    Liked
                                 </h1>
                                 <p className="vl-view-subtitle">Your favorite tracks</p>
                             </div>
                         </div>
-                        <TrackList showSearch={false} disableScroll={true} />
+                        <TrackList showSearch={false} disableScroll={true} tracks={tracks.filter(t => t.isLiked)} />
                     </div>
                 );
 
