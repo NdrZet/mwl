@@ -235,7 +235,7 @@ ipcMain.handle('stats:get', () => loadStatsSafe());
 
 ipcMain.handle('stats:addPlay', (event, track) => {
     const stats = loadStatsSafe();
-    const id = `${track.title}|${track.artist}`;
+    const id = track.id || `${track.name || 'Unknown Title'}|${track.artist || 'Unknown Artist'}`;
     
     if (!stats.tracksPlayed[id]) {
         stats.tracksPlayed[id] = { playCount: 0, lastPlayed: 0, track: track };

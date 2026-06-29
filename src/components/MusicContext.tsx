@@ -349,6 +349,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleLike = (trackId: string) => {
     setTracks(prev => prev.map(t => t.id === trackId ? { ...t, isLiked: !t.isLiked } : t));
+    setCurrentTrack(prev => (prev?.id === trackId ? { ...prev, isLiked: !prev.isLiked } : prev));
   };
 
   const removeTracksByFolder = (folderPath: string) => {
