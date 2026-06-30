@@ -5,6 +5,10 @@ import { MusicPlayer } from './components/MusicPlayer';
 import { FileUpload } from './components/FileUpload';
 import { TrackList } from './components/TrackList';
 import { PlaylistManager } from './components/PlaylistManager';
+import { Login } from './components/Login';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import type { User } from 'firebase/auth';
 import {
     Music,
     Library,
@@ -393,6 +397,17 @@ export default function App() {
     const [transitioning, setTransitioning]         = useState(false);
     const transitionTimeoutRef                      = useRef<number | null>(null);
 
+    const [user, setUser] = useState<User | null>(null);
+    const [authLoading, setAuthLoading] = useState(true);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            setAuthLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
     const navigate = (next: View) => {
         if (next === currentView) return;
         setCurrentView(next);
@@ -404,6 +419,14 @@ export default function App() {
             transitionTimeoutRef.current = null;
         }, 150);
     };
+
+    if (authLoading) {
+        return <div className="h-screen w-full flex items-center justify-center text-white/50" style={{ background: '#0A0D0D' }}>Loading...</div>;
+    }
+
+    if (!user) {
+        return <Login />;
+    }
 
     return (
         <MusicProvider>
@@ -430,6 +453,12 @@ export default function App() {
                     {/* Logo */}
                     <div className="flex items-center gap-3 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
                         <span className="vl-logo-text">Omni Project</span>
+                    </div>
+
+                    {/* User Profile & Sign Out */}
+                    <div className="flex items-center ml-4 gap-2 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
+                        {user.photoURL && <img src={user.photoURL} alt="Profile" className="w-7 h-7 rounded-full" />}
+                        <button onClick={() => signOut(auth)} className="text-xs text-white/50 hover:text-white transition-colors" title="Sign out">Sign out</button>
                     </div>
 
                     {/* Search — кнопка-переход, текст вводится внутри страницы Search */}
