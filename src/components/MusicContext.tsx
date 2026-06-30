@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-
-// Интерфейс Track, универсальный для обеих сред
+import { db, auth } from '../firebase';
+import { collection, doc, getDocs, writeBatch, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';// Интерфейс Track, универсальный для обеих сред
 export interface Track {
   id: string;
   name: string;
@@ -61,9 +61,7 @@ declare global {
 export interface MusicContextType {
   tracks: Track[];
   addTrack: (file: File) => Promise<void>;
-  addTracks: (paths: string[]) => Promise<void>;
   removeTrack: (id: string) => void;
-  removeTracksByFolder: (folderPath: string) => void;
   clearLibrary: () => void;
   playlists: Playlist[];
   createPlaylist: (name: string) => void;
@@ -130,54 +128,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   };
 
-  // УМНАЯ ЗАГРУЗКА/СОХРАНЕНИЕ
+  // УМНАЯ ЗАГРУЗКА ИЗ FIRESTORE
   useEffect(() => {
-    const isElectron = !!window.electronAPI;
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
 
-    if (isElectron) {
-      const loadInitialTracks = async () => {
-        const loadedTracks = await window.electronAPI!.loadTracks();
-        // Нормализуем id, чтобы избежать дубликатов
-        const seen = new Set<string>();
-        const normalized = loadedTracks.map((t) => {
-          let id = t.id;
-          if (!id || seen.has(id)) id = generateTrackId();
-          seen.add(id);
-          return { ...t, id } as Track;
+    const loadData = async () => {
+      try {
+        // Load Global Tracks
+        const tracksSnap = await getDocs(collection(db, 'tracks'));
+        // Load User Likes
+        const likesSnap = await getDocs(collection(db, 'users', uid, 'likes'));
+        const userLikes = new Set();
+        likesSnap.forEach(docSnap => userLikes.add(docSnap.id));
+
+        const loadedTracks: Track[] = [];
+        tracksSnap.forEach(docSnap => {
+          loadedTracks.push({ ...docSnap.data(), id: docSnap.id, isLiked: userLikes.has(docSnap.id) } as Track);
         });
+        setTracks(loadedTracks);
 
-        // Удаляем тяжеловесные Base64 обложки из памяти и tracks.json, если они там остались
-        const withCovers = normalized.map((t) => {
-          if (t.cover && t.cover.startsWith('data:image/')) {
-            return { ...t, cover: null } as Track;
-          }
-          return t;
+        // Load Playlists
+        const playlistsSnap = await getDocs(collection(db, 'users', uid, 'playlists'));
+        const loadedPlaylists: Playlist[] = [];
+        playlistsSnap.forEach(docSnap => {
+          const data = docSnap.data();
+          loadedPlaylists.push({
+            ...data,
+            id: docSnap.id,
+            createdAt: data.createdAt ? new Date(data.createdAt) : new Date()
+          } as Playlist);
         });
+        setPlaylists(loadedPlaylists);
 
-        setTracks(withCovers);
-      };
-      loadInitialTracks();
-      // load radio
-      (async () => {
-        try {
+        // Load Radio
+        const isElectron = !!window.electronAPI;
+        if (isElectron) {
           const stations = await window.electronAPI!.radioGetAll?.();
           if (stations && Array.isArray(stations)) setRadioStations(stations);
-        } catch {}
-      })();
-    } else {
-      const savedTracks = localStorage.getItem('musicApp_tracks');
-      if (savedTracks) {
-        try { setTracks(JSON.parse(savedTracks)); }
-        catch (error) { console.error('Error loading tracks from localStorage:', error); }
+        }
+      } catch (error) {
+        console.error('Failed to load library from Firestore:', error);
       }
-    }
-
-    const savedPlaylists = localStorage.getItem('musicApp_playlists');
-    if (savedPlaylists) {
-      try {
-        setPlaylists(JSON.parse(savedPlaylists).map((p: any) => ({ ...p, createdAt: new Date(p.createdAt) })));
-      } catch (error) { console.error('Error loading playlists from localStorage:', error); }
-    }
+    };
+    loadData();
   }, []);
 
   // Держим актуальную ссылку на список треков для фоновых задач
@@ -227,24 +221,11 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     })();
   }, [tracks.length]);
 
-  useEffect(() => {
-    const isElectron = !!window.electronAPI;
-    if (tracks.length > 0 || localStorage.getItem('musicApp_tracks_saved_once')) {
-      if (isElectron) {
-        // В Electron сохраняем только треки с реальными путями (исключаем blob/data/http)
-        const tracksToSave = tracks.filter(t => {
-          const p = (t.path || '').toLowerCase();
-          return p && !p.startsWith('blob:') && !p.startsWith('data:') && !p.startsWith('http');
-        });
-        window.electronAPI!.saveTracks(tracksToSave);
-      } else {
-        localStorage.setItem('musicApp_tracks', JSON.stringify(tracks));
-      }
-      localStorage.setItem('musicApp_tracks_saved_once', 'true');
-    }
-  }, [tracks]);
+  // Автосохранение треков в Firestore отключено в useEffect!
+  // Мы будем сохранять треки только при добавлении или изменении, чтобы не перезаписывать всю базу
 
   useEffect(() => {
+    // Сохраняем плейлисты локально на всякий случай или просто игнорируем
     localStorage.setItem('musicApp_playlists', JSON.stringify(playlists));
   }, [playlists]);
 
@@ -334,11 +315,19 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const removeTrack = (id: string) => {
+  const removeTrack = async (id: string) => {
     const trackToRemove = tracks.find(t => t.id === id);
     if (trackToRemove && !window.electronAPI) {
       URL.revokeObjectURL(trackToRemove.path);
     }
+    
+    // Delete from Global Firestore
+    try {
+      await deleteDoc(doc(db, 'tracks', id));
+    } catch (e) {
+      console.error('Failed to delete track from Firestore', e);
+    }
+
     setTracks(prev => prev.filter(t => t.id !== id));
     setPlaylists(prev => prev.map(p => ({ ...p, tracks: p.tracks.filter(trackId => trackId !== id) })));
     if (currentTrack?.id === id) {
@@ -347,82 +336,50 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const toggleLike = (trackId: string) => {
-    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, isLiked: !t.isLiked } : t));
-    setCurrentTrack(prev => (prev?.id === trackId ? { ...prev, isLiked: !prev.isLiked } : prev));
+  const toggleLike = async (trackId: string) => {
+    const track = tracks.find(t => t.id === trackId);
+    if (!track) return;
+    const newIsLiked = !track.isLiked;
+
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      try {
+        const likeRef = doc(db, 'users', uid, 'likes', trackId);
+        if (newIsLiked) {
+          await setDoc(likeRef, { timestamp: Date.now() });
+        } else {
+          await deleteDoc(likeRef);
+        }
+      } catch (e) {
+        console.error('Failed to update like status in Firestore', e);
+      }
+    }
+
+    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, isLiked: newIsLiked } : t));
+    setCurrentTrack(prev => (prev?.id === trackId ? { ...prev, isLiked: newIsLiked } : prev));
   };
 
-  const removeTracksByFolder = (folderPath: string) => {
-    // We filter out tracks whose path starts with the folderPath
-    setTracks(prev => {
-      const remainingTracks = prev.filter(t => {
-        // If track doesn't have a path, keep it. Otherwise, check if it starts with folderPath.
-        // Convert to lowercase or handle OS path separator differences if needed, 
-        // but simple startsWith is often enough for Electron.
-        if (!t.path) return true;
-        // Normalizing separators to compare
-        const normTrackPath = t.path.replace(/\\/g, '/');
-        const normFolderPath = folderPath.replace(/\\/g, '/');
-        return !normTrackPath.startsWith(normFolderPath);
-      });
-      return remainingTracks;
-    });
-    // We should also clean up playlists, removing tracks that are no longer in the Library.
-    // However, since we rely on `tracks` array for library, and playlists refer to IDs, 
-    // it's safer to remove invalid IDs from playlists too.
-    setPlaylists(prevPlaylists => prevPlaylists.map(p => ({
-      ...p,
-      // this is a bit tricky as we need the NEW tracks list to know valid IDs.
-      // We can do it in a useEffect that watches `tracks` and removes orphans, 
-      // or just do it here using the same condition.
-    })));
-  };
 
-  const clearLibrary = () => {
+  const clearLibrary = async () => {
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      try {
+        // Delete all tracks from global Firestore in chunks
+        const tracksSnap = await getDocs(collection(db, 'tracks'));
+        const batch = writeBatch(db);
+        tracksSnap.forEach(docSnap => batch.delete(docSnap.ref));
+        await batch.commit();
+      } catch (e) {
+        console.error('Failed to clear global library in Firestore', e);
+      }
+    }
+
     setTracks([]);
     setPlaylists([]);
     pause();
     setCurrentTrack(null);
   };
 
-  const addTracks = async (paths: string[]) => {
-    if (!window.electronAPI) return;
-    
-    // Filter out already existing paths
-    const newPaths = paths.filter(p => !tracks.some(t => t.path === p));
-    if (newPaths.length === 0) return;
-
-    // To prevent freezing, we process in chunks
-    const CHUNK_SIZE = 50;
-    for (let i = 0; i < newPaths.length; i += CHUNK_SIZE) {
-      const chunk = newPaths.slice(i, i + CHUNK_SIZE);
-      const newTracksChunk: Track[] = [];
-
-      for (const filePath of chunk) {
-        try {
-          const metadata = await window.electronAPI.getMetadata(filePath);
-          newTracksChunk.push({
-            id: generateTrackId(),
-            name: metadata.title,
-            artist: metadata.artist,
-            album: metadata.album,
-            duration: metadata.duration,
-            cover: metadata.cover,
-            path: filePath,
-          });
-        } catch (e) {
-          console.error(`Failed to add track ${filePath}`, e);
-        }
-      }
-
-      if (newTracksChunk.length > 0) {
-        setTracks(prev => [...prev, ...newTracksChunk]);
-      }
-      
-      // Yield to event loop to keep UI responsive
-      await new Promise(resolve => setTimeout(resolve, 10));
-    }
-  };
 
   // --- ИСПРАВЛЕННАЯ УНИВЕРСАЛЬНАЯ ФУНКЦИЯ PLAY ---
   const play = async (track?: Track) => {
@@ -465,7 +422,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         audio.src = `file:///${normalized}`;
       }
     } else {
-      audio.src = trackToPlay.path;
+      const p = trackToPlay.path || '';
+      if (p.startsWith('blob:') || p.startsWith('data:') || p.startsWith('http')) {
+        audio.src = p;
+      } else {
+        // Запрашиваем трек через наш потоковый сервер Node.js
+        audio.src = `http://localhost:3001/stream?path=${encodeURIComponent(p)}`;
+      }
     }
     audio.currentTime = 0;
 
@@ -522,7 +485,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const contextValue: MusicContextType = {
-    tracks, addTrack, addTracks, removeTrack, removeTracksByFolder, clearLibrary, playlists, createPlaylist, deletePlaylist, addToPlaylist, removeFromPlaylist,
+    tracks, addTrack, removeTrack, clearLibrary, playlists, createPlaylist, deletePlaylist, addToPlaylist, removeFromPlaylist,
     currentTrack, isPlaying, currentTime, duration, volume, play, pause, togglePlay, next, previous, seek, setVolume,
     queue, setQueue, currentQueueIndex,
     radioStations,

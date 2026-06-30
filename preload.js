@@ -3,10 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
     loadTracks: () => ipcRenderer.invoke('load-tracks'),
     saveTracks: (tracks) => ipcRenderer.send('save-tracks', tracks),
-    getMetadata: (filePath) => ipcRenderer.invoke('get-metadata', filePath),
     selectFiles: () => ipcRenderer.invoke('select-files'),
-    selectFolders: () => ipcRenderer.invoke('select-folders'),
-    scanFolder: (folderPath) => ipcRenderer.invoke('scan-folder', folderPath),
     getCoverPath: (filePath) => ipcRenderer.invoke('get-cover-path', filePath),
     getLyrics: (filePath) => ipcRenderer.invoke('get-lyrics', filePath),
     translateLyrics: (text, lang) => ipcRenderer.invoke('translate-lyrics', text, lang),

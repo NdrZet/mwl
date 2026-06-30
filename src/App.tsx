@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Toaster } from './components/ui/sonner';
 import { MusicProvider, useMusicContext } from './components/MusicContext';
 import { MusicPlayer } from './components/MusicPlayer';
-import { FileUpload } from './components/FileUpload';
 import { TrackList } from './components/TrackList';
 import { PlaylistManager } from './components/PlaylistManager';
 import { Login } from './components/Login';
@@ -13,7 +12,6 @@ import {
     Music,
     Library,
     ListMusic,
-    Upload,
     Home,
     Search,
     Heart,
@@ -38,7 +36,7 @@ import { type AlbumInfo } from './components/AlbumsGrid';
 import { Settings } from './components/Settings';
 import { Stats } from './components/Stats';
 
-type View = 'home' | 'search' | 'library' | 'playlists' | 'upload' | 'liked' | 'albums' | 'albumDetail' | 'artists' | 'artistDetail' | 'podcasts' | 'podcastDetail' | 'radio' | 'settings' | 'stats';
+type View = 'home' | 'search' | 'library' | 'playlists' | 'liked' | 'albums' | 'albumDetail' | 'artists' | 'artistDetail' | 'podcasts' | 'podcastDetail' | 'radio' | 'settings' | 'stats';
 
 // ── Sidebar navigation definition ─────────────────────────────────────────
 type NavItem = { id: View; label: string; icon: LucideIcon };
@@ -281,16 +279,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                     </div>
                 );
 
-            case 'upload':
-                return (
-                    <div className="space-y-5">
-                        <div>
-                            <h1 className="vl-view-title">Add Music</h1>
-                            <p className="vl-view-subtitle">Import files to your library</p>
-                        </div>
-                        <FileUpload />
-                    </div>
-                );
 
             case 'liked':
                 return (
@@ -352,11 +340,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 </nav>
 
                 <div className="vl-sidebar-footer flex flex-col gap-1">
-                    <SidebarItem
-                        item={{ id: 'upload', label: 'Upload Music', icon: Upload }}
-                        active={currentView === 'upload'}
-                        onClick={() => navigate('upload')}
-                    />
                     <SidebarItem
                         item={{ id: 'stats', label: 'Listening Stats', icon: BarChart2 }}
                         active={currentView === 'stats'}
