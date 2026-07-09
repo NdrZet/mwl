@@ -1,0 +1,32 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+    loadTracks: () => ipcRenderer.invoke('load-tracks'),
+    saveTracks: (tracks) => ipcRenderer.send('save-tracks', tracks),
+    selectFiles: () => ipcRenderer.invoke('select-files'),
+    getCoverPath: (filePath) => ipcRenderer.invoke('get-cover-path', filePath),
+    getLyrics: (filePath) => ipcRenderer.invoke('get-lyrics', filePath),
+    translateLyrics: (text, lang) => ipcRenderer.invoke('translate-lyrics', text, lang),
+    getArtistInfo: (name) => ipcRenderer.invoke('get-artist-info', name),
+    // Podcasts
+    podcastsGetAll: () => ipcRenderer.invoke('podcasts:getAll'),
+    podcastsAddByUrl: (feedUrl) => ipcRenderer.invoke('podcasts:addByUrl', feedUrl),
+    podcastsRefreshAll: () => ipcRenderer.invoke('podcasts:refreshAll'),
+    podcastsRemove: (podcastId) => ipcRenderer.invoke('podcasts:remove', podcastId),
+    // Settings & Stats
+    settingsGet: () => ipcRenderer.invoke('settings:get'),
+    settingsSet: (settings) => ipcRenderer.invoke('settings:set', settings),
+    statsGet: () => ipcRenderer.invoke('stats:get'),
+    statsAddPlay: (track) => ipcRenderer.invoke('stats:addPlay', track),
+    statsTrackTime: (seconds) => ipcRenderer.invoke('stats:trackTime', seconds),
+    // Radio
+    radioGetAll: () => ipcRenderer.invoke('radio:getAll'),
+    radioSaveAll: (stations) => ipcRenderer.invoke('radio:saveAll', stations),
+    // Window controls for custom titlebar
+    isWindowMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+    minimizeWindow: () => ipcRenderer.send('window:minimize'),
+    toggleMaximizeWindow: () => ipcRenderer.send('window:toggleMaximize'),
+    closeWindow: () => ipcRenderer.send('window:close'),
+    onWindowMaximized: (cb) => { ipcRenderer.on('window:maximized', cb); return () => ipcRenderer.removeListener('window:maximized', cb); },
+    onWindowUnmaximized: (cb) => { ipcRenderer.on('window:unmaximized', cb); return () => ipcRenderer.removeListener('window:unmaximized', cb); },
+});
