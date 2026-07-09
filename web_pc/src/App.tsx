@@ -479,12 +479,14 @@ export default function App() {
             >
                 {/* ── Header ──────────────────────────────────────────────── */}
                 <div className="vl-header" style={{ WebkitAppRegion: 'drag' as any }}>
-                    {/* Traffic lights */}
-                    <div className="flex items-center gap-[7px] flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
-                        <button aria-label="Minimize"        onClick={() => (window as any).electronAPI?.minimizeWindow?.()}       className="h-3.5 w-3.5 rounded-full bg-[#28c840] hover:ring-2 hover:ring-[#28c840]/40 transition-shadow" />
-                        <button aria-label="Toggle maximize" onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()} className="h-3.5 w-3.5 rounded-full bg-[#ffbd2e] hover:ring-2 hover:ring-[#ffbd2e]/40 transition-shadow" />
-                        <button aria-label="Close"           onClick={() => (window as any).electronAPI?.closeWindow?.()}          className="h-3.5 w-3.5 rounded-full bg-[#ff5f57] hover:ring-2 hover:ring-[#ff5f57]/40 transition-shadow" />
-                    </div>
+                    {/* Traffic lights (only on Desktop) */}
+                    {(window as any).electronAPI && (
+                        <div className="flex items-center gap-[7px] flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
+                            <button aria-label="Minimize"        onClick={() => (window as any).electronAPI?.minimizeWindow?.()}       className="h-3.5 w-3.5 rounded-full bg-[#28c840] hover:ring-2 hover:ring-[#28c840]/40 transition-shadow" />
+                            <button aria-label="Toggle maximize" onClick={() => (window as any).electronAPI?.toggleMaximizeWindow?.()} className="h-3.5 w-3.5 rounded-full bg-[#ffbd2e] hover:ring-2 hover:ring-[#ffbd2e]/40 transition-shadow" />
+                            <button aria-label="Close"           onClick={() => (window as any).electronAPI?.closeWindow?.()}          className="h-3.5 w-3.5 rounded-full bg-[#ff5f57] hover:ring-2 hover:ring-[#ff5f57]/40 transition-shadow" />
+                        </div>
+                    )}
 
                     {/* Logo */}
                     <div className="flex items-center gap-3 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' as any }}>
