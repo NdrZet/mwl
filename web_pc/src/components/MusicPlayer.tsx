@@ -187,9 +187,24 @@ export const MusicPlayer: React.FC = () => {
     setShowTranslation(false);
 
     // Fetch lyrics asynchronously
-    window.electronAPI.getLyrics(currentTrack.path).then((text) => {
+    const API_BASE = typeof window !== 'undefined' && (window as any).electronAPI ? 'http://31.76.51.33:3001' : '';
+    
+    const fetchLyrics = async () => {
+      if ((window as any).electronAPI?.getLyrics) {
+        return (window as any).electronAPI.getLyrics(currentTrack.path);
+      } else {
+        const res = await fetch(`${API_BASE}/api/lyrics?path=${encodeURIComponent(currentTrack.path)}`);
+        return res.ok ? res.json() : null;
+      }
+    };
+
+    fetchLyrics().then((text) => {
       if (isCancelled) return;
-      setLyrics(parseLRC(text || ''));
+      if (text && typeof text === 'string') {
+        setLyrics(parseLRC(text));
+      } else {
+        setLyrics([]); 
+      }
       setIsManualScrolling(false); // Reset manual scrolling on new track
     }).catch(() => { 
       if (isCancelled) return;
@@ -220,19 +235,18 @@ export const MusicPlayer: React.FC = () => {
       if (window.electronAPI?.translateLyrics) {
         translated = await window.electronAPI.translateLyrics(textToTranslate, 'ru');
       } else {
-        const API_BASE = typeof window !== 'undefined' && window.electronAPI ? 'http://31.76.51.33:3001' : '';
+        const API_BASE = typeof window !== 'undefined' && (window as any).electronAPI ? 'http://31.76.51.33:3001' : '';
         const res = await fetch(`${API_BASE}/api/translate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: textToTranslate, targetLang: 'ru' })
         });
         if (res.ok) {
-          const data = await res.json();
-          translated = data.translatedText;
+          translated = await res.json();
         }
       }
 
-      if (translated) {
+      if (translated && typeof translated === 'string') {
         setTranslatedLyrics(translated.split('\n'));
         setShowTranslation(true);
       }
