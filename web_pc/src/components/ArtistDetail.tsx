@@ -49,17 +49,33 @@ export const ArtistDetail: React.FC<ArtistDetailProps> = ({ artist, onBack, onAl
   }, [artist?.name]);
 
   const handleTranslate = async () => {
-    if (!apiData?.biographyEN || !window.electronAPI?.translateLyrics) return;
+    if (!apiData?.biographyEN) return;
     if (translatedBio) {
       setTranslatedBio(null);
       return;
     }
     setIsTranslating(true);
     try {
-      const res = await window.electronAPI.translateLyrics(apiData.biographyEN, 'ru');
-      if (res) setTranslatedBio(res);
+      let resText = null;
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.translateLyrics) {
+        resText = await (window as any).electronAPI.translateLyrics(apiData.biographyEN, 'ru');
+      } else {
+        const API_BASE = typeof window !== 'undefined' && (window as any).electronAPI ? 'http://31.76.51.33:3001' : '';
+        const res = await fetch(`${API_BASE}/api/translate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: apiData.biographyEN, targetLang: 'ru' })
+        });
+        if (res.ok) {
+          resText = await res.json();
+        }
+      }
+      
+      if (resText && typeof resText === 'string') {
+        setTranslatedBio(resText);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Translation failed', e);
     } finally {
       setIsTranslating(false);
     }

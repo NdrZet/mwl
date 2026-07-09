@@ -173,8 +173,8 @@ export const MusicPlayer: React.FC = () => {
 
   useEffect(() => {
     let isCancelled = false;
-
-    if (!currentTrack || !window.electronAPI?.getLyrics) {
+    
+    if (!currentTrack) {
       setLyrics([]);
       setTranslatedLyrics([]);
       setShowTranslation(false);
